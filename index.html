@@ -72,7 +72,7 @@ footer a{color:var(--mute);font-size:13px}
 .filters label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:4px;min-width:140px;flex:1}
 .filters button{height:44px}
 .tbl{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--radius);overflow:hidden;font-size:14px}
-.tbl th,.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.tbl th,.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
 .tbl th{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.4px}
 .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:18px}
 .badge{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bg);color:var(--mute)}
@@ -91,6 +91,14 @@ footer a{color:var(--mute);font-size:13px}
 .devrow:last-child{border-bottom:0}
 .flag.red{color:var(--red);background:var(--red-bg)}
 @media (max-width:520px){.pinrow{grid-template-columns:1fr 1fr}.clock{font-size:22px}}
+.langs{display:flex;gap:6px;justify-content:flex-end;margin-bottom:6px}
+.langs button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 11px;font-size:13px;font-weight:600;cursor:pointer}
+.langs button.act{background:var(--ink);color:var(--bg)}
+.ltr{direction:ltr;unicode-bidi:isolate}
+[dir=rtl] body{font-family:system-ui,"Segoe UI","Noto Sans Arabic",Tahoma,sans-serif}
+[dir=rtl] .ecard{border-left:1px solid var(--line);border-right:5px solid var(--line)}
+[dir=rtl] .ecard.on{border-right-color:var(--green)}
+.tbl th,.tbl td{text-align:start}
 </style>
 </head>
 <body>
@@ -174,18 +182,161 @@ const DB = {
   }
 };
 
+/* ---------------- languages ---------------- */
+const I18N = {
+en: {
+  title_clock:"Time Clock", enter_id_pin:"Enter your employee ID and PIN", emp_id:"Employee ID", pin:"PIN", continue:"Continue", checking:"Checking…",
+  this_phone:"This phone", too_many:"Too many wrong attempts on this phone. Try again in {n} min.", enter_both:"Enter your ID and PIN.",
+  no_conn:"No connection. Try again.", pin_not_set:"Your PIN is not set up yet. Ask the admin.", wrong_id_pin:"Wrong ID or PIN.", loading:"Loading…",
+  in_since:"Clocked in since {t}", currently_out:"Currently clocked out", clock_in:"Clock In", clock_out:"Clock Out", cancel_logout:"Cancel / log out",
+  shop_not_set:"Shop location is not set. Ask the admin.", checking_loc:"Checking your location…",
+  wrong_phone:"This phone is not registered to <b>{e}</b>.<br>Clock in with your own phone. If you changed your phone, ask the admin to reset it.",
+  phone_taken:"This phone is registered to another employee.<br>Every employee must clock in with their own phone.",
+  weak_gps:"GPS accuracy is weak (±{a} m). Step outside or near a window and try again.",
+  too_far:"You are <b>{d} m</b> from the shop (allowed: {r} m).<br>Not recorded — you must be at the shop.",
+  saving:"Saving…", save_fail:"Could not save. Check your internet connection and try again.", done_in:"Clocked in", done_out:"Clocked out",
+  done_outside:"Recorded outside the shop area — flagged for admin.", done_note:"Sent to the Admin Center. This screen closes automatically.",
+  gps_unsupported:"This device does not support GPS location.", gps_denied:"Location permission denied. Allow location access for this site in your browser settings, then try again.",
+  gps_timeout:"GPS timed out. Make sure location is turned on and try again.", gps_fail:"Could not get your location. Try again.",
+  demo:"<b>Demo mode</b> — data is saved on this device only.", db_fail:"Could not connect to the database. Check your internet connection.",
+  admin_center:"Admin Center", first_pin:"First time: create an admin PIN (at least 4 digits).", enter_admin_pin:"Enter the admin PIN.", admin_pin:"Admin PIN",
+  repeat_pin:"Repeat PIN", create_enter:"Create & enter", enter:"Enter", pins_match:"PINs must match and be at least 4 digits.", wrong_pin:"Wrong PIN.",
+  demo_mode:"DEMO MODE", logout:"Log out", set_loc_warn:"Set the shop location in <b>Settings</b> — employees can't clock in until it's set.",
+  no_pin_warn:"<b>{n} employee(s) have no PIN and can't clock in yet:</b> {list}. Set PINs in <b>Settings → Employee PINs</b>.",
+  tab_live:"Live board", tab_rec:"Records & hours", tab_set:"Settings", load_fail:"Could not load data: ",
+  shared_title:"⚠ Same phone used for different employees:", phone:"Phone", in_now:"clocked in now", out_now:"clocked out", flags_today:"location flags today",
+  st_in:"● IN", st_out:"OUT", since:"since {t}", last_out:"last out {t}", no_records:"no records yet", today_h:"Today: {h}", running:" (running)",
+  flag_outside:"outside shop area", flag_shared:"shared phone today", refresh_note:"Refreshes every 2 minutes · last update {t}", refresh_now:"Refresh now",
+  rej:"Rejected – {r}", r_outside:"outside area", r_other:"wrong phone", r_taken:"another employee's phone", at_shop:"At shop", outside:"Outside",
+  a_in:"Clock in", a_out:"Clock out", a_rin:"Clock in (blocked)", a_rout:"Clock out (blocked)", from:"From", to:"To", employee:"Employee",
+  all_emps:"All employees", show:"Show", export:"Export CSV", hours:"Hours", shifts:"Shifts", loc_flags:"Location flags", still_in:"still in",
+  no_out:"no clock-out", all_entries:"All entries ({n})", date:"Date", time:"Time", action:"Action", coords:"Coordinates", distance:"Distance",
+  accuracy:"GPS accuracy", status:"Status", map:"Map", open:"Open", shared_b:"shared", no_entries:"No entries in this period.", m:"m",
+  hm:"{h}h {m}m", latitude:"Latitude", longitude:"Longitude",
+  s_shop:"Shop location", s_name:"Shop name", use_loc:"📍 Use my current location", stand_inside:"Stand inside the shop when you press this.",
+  check_map:"Check the saved location on Google Maps", radius:"Allowed radius around the shop (meters)",
+  enforce:"Block clock-in/out from outside the radius (if unticked: record it but flag it)", s_lock:"Phone lock",
+  lock_lbl:"Each employee can only clock in from their own registered phone (one phone = one employee)",
+  lock_note:"A phone is registered automatically at the employee's first clock-in. Press <b>Reset</b> if they change phone, clear their browser data or switch browser.",
+  s_emps:"Employees", one_per_line:"One employee ID per line.", s_pins:"Employee PINs (required)",
+  pins_note:"Employees log in with their ID + PIN. Without a PIN they cannot clock in. Type a new PIN to set/change it; tick \"remove\" to delete it.",
+  pin_set:"PIN set", no_pin:"no PIN", new_pin:"New PIN", remove:"remove", new_admin_pin:"New admin PIN (leave empty to keep current)",
+  save_settings:"Save settings", phones_fail:"Could not load phones.", not_reg:"not registered yet", reset:"Reset",
+  reset_confirm:"Reset the phone for {e}? Their next clock-in will register the new phone.", reset_fail:"Could not reset: ",
+  getting_loc:"Getting location…", got_loc:"Got it (accuracy ±{a} m). Press Save.", bad_coords:"Latitude/longitude are not valid.",
+  bad_radius:"Radius must be between 20 and 2000 m.", need_emp:"Add at least one employee.", pin_short:"PIN for {e} must be at least 4 digits.",
+  admin_short:"Admin PIN must be at least 4 digits.", saved:"Settings saved.", save_err:"Could not save: "
+},
+de: {
+  title_clock:"Zeiterfassung", enter_id_pin:"Mitarbeiter-ID und PIN eingeben", emp_id:"Mitarbeiter-ID", pin:"PIN", continue:"Weiter", checking:"Wird geprüft…",
+  this_phone:"Dieses Handy", too_many:"Zu viele Fehlversuche auf diesem Handy. Bitte in {n} Min. erneut versuchen.", enter_both:"Bitte ID und PIN eingeben.",
+  no_conn:"Keine Verbindung. Bitte erneut versuchen.", pin_not_set:"Ihre PIN ist noch nicht eingerichtet. Bitte an den Admin wenden.", wrong_id_pin:"Falsche ID oder PIN.", loading:"Wird geladen…",
+  in_since:"Eingestempelt seit {t}", currently_out:"Derzeit ausgestempelt", clock_in:"Einstempeln", clock_out:"Ausstempeln", cancel_logout:"Abbrechen / abmelden",
+  shop_not_set:"Der Shop-Standort ist nicht festgelegt. Bitte an den Admin wenden.", checking_loc:"Standort wird geprüft…",
+  wrong_phone:"Dieses Handy ist nicht für <b>{e}</b> registriert.<br>Bitte mit dem eigenen Handy einstempeln. Bei einem neuen Handy den Admin um Zurücksetzung bitten.",
+  phone_taken:"Dieses Handy ist für einen anderen Mitarbeiter registriert.<br>Jeder Mitarbeiter muss mit seinem eigenen Handy einstempeln.",
+  weak_gps:"GPS-Genauigkeit ist schwach (±{a} m). Bitte ans Fenster oder nach draußen gehen und erneut versuchen.",
+  too_far:"Sie sind <b>{d} m</b> vom Shop entfernt (erlaubt: {r} m).<br>Nicht erfasst – Sie müssen im Shop sein.",
+  saving:"Wird gespeichert…", save_fail:"Speichern fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen.", done_in:"Eingestempelt", done_out:"Ausgestempelt",
+  done_outside:"Außerhalb des Shop-Bereichs erfasst – für den Admin markiert.", done_note:"An das Admin-Center gesendet. Dieser Bildschirm schließt sich automatisch.",
+  gps_unsupported:"Dieses Gerät unterstützt keine GPS-Ortung.", gps_denied:"Standortzugriff verweigert. Bitte in den Browser-Einstellungen den Standort für diese Seite erlauben und erneut versuchen.",
+  gps_timeout:"GPS-Zeitüberschreitung. Bitte Standort einschalten und erneut versuchen.", gps_fail:"Standort konnte nicht ermittelt werden. Bitte erneut versuchen.",
+  demo:"<b>Demo-Modus</b> – Daten werden nur auf diesem Gerät gespeichert.", db_fail:"Keine Verbindung zur Datenbank. Bitte Internetverbindung prüfen.",
+  admin_center:"Admin-Center", first_pin:"Erster Start: Admin-PIN erstellen (mind. 4 Ziffern).", enter_admin_pin:"Admin-PIN eingeben.", admin_pin:"Admin-PIN",
+  repeat_pin:"PIN wiederholen", create_enter:"Erstellen & öffnen", enter:"Öffnen", pins_match:"Die PINs müssen übereinstimmen und mind. 4 Ziffern haben.", wrong_pin:"Falsche PIN.",
+  demo_mode:"DEMO-MODUS", logout:"Abmelden", set_loc_warn:"Shop-Standort unter <b>Einstellungen</b> festlegen – vorher kann niemand einstempeln.",
+  no_pin_warn:"<b>{n} Mitarbeiter haben keine PIN und können noch nicht einstempeln:</b> {list}. PINs unter <b>Einstellungen → Mitarbeiter-PINs</b> festlegen.",
+  tab_live:"Live-Übersicht", tab_rec:"Einträge & Stunden", tab_set:"Einstellungen", load_fail:"Daten konnten nicht geladen werden: ",
+  shared_title:"⚠ Dasselbe Handy für verschiedene Mitarbeiter verwendet:", phone:"Handy", in_now:"jetzt eingestempelt", out_now:"ausgestempelt", flags_today:"Standort-Warnungen heute",
+  st_in:"● ANWESEND", st_out:"ABWESEND", since:"seit {t}", last_out:"zuletzt ausgestempelt {t}", no_records:"noch keine Einträge", today_h:"Heute: {h}", running:" (läuft)",
+  flag_outside:"außerhalb des Shops", flag_shared:"geteiltes Handy heute", refresh_note:"Aktualisiert alle 2 Minuten · zuletzt {t}", refresh_now:"Jetzt aktualisieren",
+  rej:"Abgelehnt – {r}", r_outside:"außerhalb", r_other:"falsches Handy", r_taken:"Handy eines anderen Mitarbeiters", at_shop:"Im Shop", outside:"Außerhalb",
+  a_in:"Einstempeln", a_out:"Ausstempeln", a_rin:"Einstempeln (blockiert)", a_rout:"Ausstempeln (blockiert)", from:"Von", to:"Bis", employee:"Mitarbeiter",
+  all_emps:"Alle Mitarbeiter", show:"Anzeigen", export:"CSV exportieren", hours:"Stunden", shifts:"Schichten", loc_flags:"Standort-Warnungen", still_in:"noch da",
+  no_out:"kein Ausstempeln", all_entries:"Alle Einträge ({n})", date:"Datum", time:"Uhrzeit", action:"Aktion", coords:"Koordinaten", distance:"Entfernung",
+  accuracy:"GPS-Genauigkeit", status:"Status", map:"Karte", open:"Öffnen", shared_b:"geteilt", no_entries:"Keine Einträge in diesem Zeitraum.", m:"m",
+  hm:"{h} Std. {m} Min.", latitude:"Breitengrad", longitude:"Längengrad",
+  s_shop:"Shop-Standort", s_name:"Shop-Name", use_loc:"📍 Aktuellen Standort verwenden", stand_inside:"Dabei im Shop stehen.",
+  check_map:"Gespeicherten Standort in Google Maps prüfen", radius:"Erlaubter Radius um den Shop (Meter)",
+  enforce:"Ein-/Ausstempeln außerhalb des Radius blockieren (sonst: erfassen und markieren)", s_lock:"Handy-Sperre",
+  lock_lbl:"Jeder Mitarbeiter kann nur mit seinem registrierten Handy einstempeln (ein Handy = ein Mitarbeiter)",
+  lock_note:"Das Handy wird beim ersten Einstempeln automatisch registriert. <b>Zurücksetzen</b> drücken bei neuem Handy, gelöschten Browserdaten oder Browserwechsel.",
+  s_emps:"Mitarbeiter", one_per_line:"Eine Mitarbeiter-ID pro Zeile.", s_pins:"Mitarbeiter-PINs (erforderlich)",
+  pins_note:"Mitarbeiter melden sich mit ID + PIN an. Ohne PIN ist kein Einstempeln möglich. Neue PIN eingeben zum Setzen/Ändern; „entfernen“ ankreuzen zum Löschen.",
+  pin_set:"PIN gesetzt", no_pin:"keine PIN", new_pin:"Neue PIN", remove:"entfernen", new_admin_pin:"Neue Admin-PIN (leer lassen = unverändert)",
+  save_settings:"Einstellungen speichern", phones_fail:"Handys konnten nicht geladen werden.", not_reg:"noch nicht registriert", reset:"Zurücksetzen",
+  reset_confirm:"Handy für {e} zurücksetzen? Beim nächsten Einstempeln wird das neue Handy registriert.", reset_fail:"Zurücksetzen fehlgeschlagen: ",
+  getting_loc:"Standort wird ermittelt…", got_loc:"Erfasst (Genauigkeit ±{a} m). Jetzt speichern.", bad_coords:"Breiten-/Längengrad ungültig.",
+  bad_radius:"Der Radius muss zwischen 20 und 2000 m liegen.", need_emp:"Mindestens einen Mitarbeiter hinzufügen.", pin_short:"PIN für {e} muss mind. 4 Ziffern haben.",
+  admin_short:"Admin-PIN muss mind. 4 Ziffern haben.", saved:"Einstellungen gespeichert.", save_err:"Speichern fehlgeschlagen: "
+},
+ar: {
+  title_clock:"تسجيل الدوام", enter_id_pin:"أدخل رقم الموظف والرمز السري", emp_id:"رقم الموظف", pin:"الرمز السري", continue:"متابعة", checking:"جارٍ التحقق…",
+  this_phone:"هذا الهاتف", too_many:"محاولات خاطئة كثيرة على هذا الهاتف. حاول مرة أخرى بعد {n} دقيقة.", enter_both:"أدخل رقم الموظف والرمز السري.",
+  no_conn:"لا يوجد اتصال. حاول مرة أخرى.", pin_not_set:"لم يتم إعداد رمزك السري بعد. تواصل مع المسؤول.", wrong_id_pin:"رقم الموظف أو الرمز السري غير صحيح.", loading:"جارٍ التحميل…",
+  in_since:"في الدوام منذ {t}", currently_out:"خارج الدوام حالياً", clock_in:"بدء الدوام", clock_out:"إنهاء الدوام", cancel_logout:"إلغاء / خروج",
+  shop_not_set:"لم يتم تحديد موقع المحل. تواصل مع المسؤول.", checking_loc:"جارٍ التحقق من موقعك…",
+  wrong_phone:"هذا الهاتف غير مسجّل باسم <b>{e}</b>.<br>سجّل من هاتفك الخاص. إذا غيّرت هاتفك، اطلب من المسؤول إعادة تعيينه.",
+  phone_taken:"هذا الهاتف مسجّل باسم موظف آخر.<br>يجب على كل موظف التسجيل من هاتفه الخاص.",
+  weak_gps:"دقة GPS ضعيفة (±{a} م). اقترب من نافذة أو اخرج قليلاً وحاول مجدداً.",
+  too_far:"أنت على بُعد <b>{d} م</b> من المحل (المسموح: {r} م).<br>لم يتم التسجيل — يجب أن تكون في المحل.",
+  saving:"جارٍ الحفظ…", save_fail:"تعذّر الحفظ. تحقّق من اتصال الإنترنت وحاول مجدداً.", done_in:"تم بدء الدوام", done_out:"تم إنهاء الدوام",
+  done_outside:"تم التسجيل خارج منطقة المحل — تم تنبيه المسؤول.", done_note:"تم الإرسال إلى لوحة الإدارة. ستُغلق هذه الشاشة تلقائياً.",
+  gps_unsupported:"هذا الجهاز لا يدعم تحديد الموقع.", gps_denied:"تم رفض إذن الموقع. اسمح لهذه الصفحة بالوصول إلى موقعك من إعدادات المتصفح ثم حاول مجدداً.",
+  gps_timeout:"انتهت مهلة GPS. تأكد من تشغيل الموقع وحاول مجدداً.", gps_fail:"تعذّر تحديد موقعك. حاول مجدداً.",
+  demo:"<b>وضع تجريبي</b> — يتم حفظ البيانات على هذا الجهاز فقط.", db_fail:"تعذّر الاتصال بقاعدة البيانات. تحقّق من اتصال الإنترنت.",
+  admin_center:"لوحة الإدارة", first_pin:"أول استخدام: أنشئ رمزاً سرياً للمسؤول (4 أرقام على الأقل).", enter_admin_pin:"أدخل الرمز السري للمسؤول.", admin_pin:"رمز المسؤول",
+  repeat_pin:"أعد إدخال الرمز", create_enter:"إنشاء ودخول", enter:"دخول", pins_match:"يجب أن يتطابق الرمزان وأن يكونا من 4 أرقام على الأقل.", wrong_pin:"رمز غير صحيح.",
+  demo_mode:"وضع تجريبي", logout:"خروج", set_loc_warn:"حدّد موقع المحل من <b>الإعدادات</b> — لا يمكن للموظفين التسجيل قبل ذلك.",
+  no_pin_warn:"<b>{n} موظف بدون رمز سري ولا يمكنهم التسجيل بعد:</b> {list}. حدّد الرموز من <b>الإعدادات ← رموز الموظفين</b>.",
+  tab_live:"اللوحة المباشرة", tab_rec:"السجلات والساعات", tab_set:"الإعدادات", load_fail:"تعذّر تحميل البيانات: ",
+  shared_title:"⚠ نفس الهاتف استُخدم لموظفين مختلفين:", phone:"الهاتف", in_now:"في الدوام الآن", out_now:"خارج الدوام", flags_today:"تنبيهات الموقع اليوم",
+  st_in:"● في الدوام", st_out:"خارج الدوام", since:"منذ {t}", last_out:"آخر خروج {t}", no_records:"لا توجد سجلات بعد", today_h:"اليوم: {h}", running:" (جارٍ)",
+  flag_outside:"خارج منطقة المحل", flag_shared:"هاتف مشترك اليوم", refresh_note:"يتحدّث كل دقيقتين · آخر تحديث {t}", refresh_now:"تحديث الآن",
+  rej:"مرفوض – {r}", r_outside:"خارج المنطقة", r_other:"هاتف خاطئ", r_taken:"هاتف موظف آخر", at_shop:"في المحل", outside:"خارج المحل",
+  a_in:"بدء الدوام", a_out:"إنهاء الدوام", a_rin:"بدء الدوام (مرفوض)", a_rout:"إنهاء الدوام (مرفوض)", from:"من", to:"إلى", employee:"الموظف",
+  all_emps:"كل الموظفين", show:"عرض", export:"تصدير CSV", hours:"الساعات", shifts:"المناوبات", loc_flags:"تنبيهات الموقع", still_in:"ما زال في الدوام",
+  no_out:"بدون إنهاء دوام", all_entries:"كل السجلات ({n})", date:"التاريخ", time:"الوقت", action:"الإجراء", coords:"الإحداثيات", distance:"المسافة",
+  accuracy:"دقة GPS", status:"الحالة", map:"الخريطة", open:"فتح", shared_b:"مشترك", no_entries:"لا توجد سجلات في هذه الفترة.", m:"م",
+  hm:"{h} س {m} د", latitude:"خط العرض", longitude:"خط الطول",
+  s_shop:"موقع المحل", s_name:"اسم المحل", use_loc:"📍 استخدم موقعي الحالي", stand_inside:"قف داخل المحل عند الضغط.",
+  check_map:"تحقّق من الموقع المحفوظ على خرائط Google", radius:"نصف القطر المسموح حول المحل (متر)",
+  enforce:"منع التسجيل من خارج النطاق (إذا أُلغي التحديد: يُسجَّل مع تنبيه)", s_lock:"قفل الهاتف",
+  lock_lbl:"كل موظف يسجّل فقط من هاتفه المسجّل (هاتف واحد = موظف واحد)",
+  lock_note:"يُسجَّل الهاتف تلقائياً عند أول تسجيل للموظف. اضغط <b>إعادة تعيين</b> إذا غيّر هاتفه أو مسح بيانات المتصفح أو غيّر المتصفح.",
+  s_emps:"الموظفون", one_per_line:"رقم موظف واحد في كل سطر.", s_pins:"رموز الموظفين (إلزامي)",
+  pins_note:"يدخل الموظفون برقمهم والرمز السري. بدون رمز لا يمكنهم التسجيل. اكتب رمزاً جديداً لتعيينه أو تغييره، وحدّد «حذف» لإزالته.",
+  pin_set:"الرمز مُعيَّن", no_pin:"بدون رمز", new_pin:"رمز جديد", remove:"حذف", new_admin_pin:"رمز مسؤول جديد (اتركه فارغاً للإبقاء على الحالي)",
+  save_settings:"حفظ الإعدادات", phones_fail:"تعذّر تحميل الهواتف.", not_reg:"غير مسجّل بعد", reset:"إعادة تعيين",
+  reset_confirm:"إعادة تعيين هاتف {e}؟ سيتم تسجيل الهاتف الجديد عند تسجيله القادم.", reset_fail:"تعذّرت إعادة التعيين: ",
+  getting_loc:"جارٍ تحديد الموقع…", got_loc:"تم (الدقة ±{a} م). اضغط حفظ.", bad_coords:"خط العرض أو الطول غير صالح.",
+  bad_radius:"يجب أن يكون نصف القطر بين 20 و2000 م.", need_emp:"أضف موظفاً واحداً على الأقل.", pin_short:"يجب أن يكون رمز {e} من 4 أرقام على الأقل.",
+  admin_short:"يجب أن يكون رمز المسؤول من 4 أرقام على الأقل.", saved:"تم حفظ الإعدادات.", save_err:"تعذّر الحفظ: "
+}};
+const LANGS = { en: "EN", de: "DE", ar: "عربي" };
+let L = (() => { let l = null; try { l = JSON.parse(localStorage.getItem("tc_lang")); } catch {}
+  if (I18N[l]) return l; const n = (navigator.language || "en").slice(0, 2); return I18N[n] ? n : "en"; })();
+function t(k, v) { let s = (I18N[L] && I18N[L][k]) ?? I18N.en[k] ?? k; if (v) for (const x in v) s = s.split("{" + x + "}").join(v[x]); return s; }
+function applyLang() { document.documentElement.lang = L; document.documentElement.dir = L === "ar" ? "rtl" : "ltr"; }
+const langBar = () => `<div class="langs">${Object.entries(LANGS).map(([k, l]) => `<button type="button" data-l="${k}" class="${L === k ? "act" : ""}">${l}</button>`).join("")}</div>`;
+function bindLang(rerender) {
+  app.querySelectorAll("[data-l]").forEach(b => b.onclick = () => { L = b.dataset.l; try { localStorage.setItem("tc_lang", JSON.stringify(L)); } catch {} applyLang(); rerender(); });
+}
+applyLang();
+
 /* ---------------- helpers ---------------- */
 const app = document.getElementById("app");
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmtT = t => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-const fmtD = t => new Date(t).toLocaleDateString("de-DE");
-const isToday = t => fmtD(t) === fmtD(Date.now());
-const fmtWhen = t => (isToday(t) ? "" : fmtD(t) + " ") + fmtT(t);
-const fmtH = ms => { const m = Math.round(ms / 60000); return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"; };
-const isoDay = t => { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
-const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
-const nextDay = t => { const d = new Date(t); d.setDate(d.getDate() + 1); return d.getTime(); };
+const ltr = s => `<span class="ltr">${s}</span>`;
+const fmtT = t0 => new Date(t0).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+const fmtD = t0 => new Date(t0).toLocaleDateString("de-DE");
+const isToday = t0 => fmtD(t0) === fmtD(Date.now());
+const fmtWhen = t0 => ltr((isToday(t0) ? "" : fmtD(t0) + " ") + fmtT(t0));
+const fmtH = ms => { const m = Math.round(ms / 60000); return t("hm", { h: Math.floor(m / 60), m: String(m % 60).padStart(2, "0") }); };
+const isoDay = t0 => { const d = new Date(t0); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+const dayStart = t0 => { const d = new Date(t0); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const nextDay = t0 => { const d = new Date(t0); d.setDate(d.getDate() + 1); return d.getTime(); };
 const mapUrl = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;
 const alertBox = (cls, txt) => `<div class="alert ${cls}">${txt}</div>`;
 
@@ -205,8 +356,7 @@ function deviceId() {
 function lockLeft() { const f = LS.get("fails", { n: 0, until: 0 }); return f.until > Date.now() ? f.until - Date.now() : 0; }
 function failAttempt() { const f = LS.get("fails", { n: 0, until: 0 }); f.n++; if (f.n >= 5) { f.n = 0; f.until = Date.now() + 5 * 60000; } LS.set("fails", f); }
 function clearFails() { LS.set("fails", { n: 0, until: 0 }); }
-const shortDev = d => d ? "…" + String(d).slice(-4) : "–";
-// phones used by more than one employee: { deviceId: [emp, emp] }
+const shortDev = d => d ? ltr("…" + esc(String(d).slice(-4))) : "–";
 function sharedPhones(ps) {
   const m = {};
   ps.forEach(p => { if (p.deviceId) (m[p.deviceId] = m[p.deviceId] || new Set()).add(p.emp); });
@@ -214,15 +364,14 @@ function sharedPhones(ps) {
   for (const k in m) if (m[k].size > 1) out[k] = [...m[k]];
   return out;
 }
-const sharedAlert = sh => Object.keys(sh).length ? alertBox("err", "<b>⚠ Same phone used for different employees:</b><br>" +
-  Object.entries(sh).map(([d, es]) => `Phone ${shortDev(d)} → ${es.map(esc).join(", ")}`).join("<br>")) + "<br>" : "";
+const sharedAlert = sh => Object.keys(sh).length ? alertBox("err", `<b>${t("shared_title")}</b><br>` +
+  Object.entries(sh).map(([d, es]) => `${t("phone")} ${shortDev(d)} → ${ltr(es.map(esc).join(", "))}`).join("<br>")) + "<br>" : "";
 function getPos() {
   return new Promise((res, rej) => {
-    if (!navigator.geolocation) return rej(new Error("This device does not support GPS location."));
+    if (!navigator.geolocation) return rej(new Error(t("gps_unsupported")));
     navigator.geolocation.getCurrentPosition(
       p => res(p.coords),
-      e => rej(new Error(e.code === 1 ? "Location permission denied. Allow location access for this site in your browser settings, then try again."
-        : e.code === 3 ? "GPS timed out. Make sure location is turned on and try again." : "Could not get your location. Try again.")),
+      e => rej(new Error(e.code === 1 ? t("gps_denied") : e.code === 3 ? t("gps_timeout") : t("gps_fail"))),
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   });
@@ -243,7 +392,7 @@ function calcHours(ps, now) {
   for (const e in open) if (open[e] != null) { r[e].open = true; if (now) r[e].ms += now - open[e]; }
   return r;
 }
-const demoBanner = () => DEMO ? alertBox("warn demo", "<b>Demo mode</b> — data is saved on this device only. Add your Firebase config to connect all phones to the Admin Center.") : "";
+const demoBanner = () => DEMO ? alertBox("warn demo", t("demo")) : "";
 
 /* ---------------- routing ---------------- */
 let S = null, resetTimer = null, liveTimer = null;
@@ -251,7 +400,7 @@ setInterval(() => { const c = $("#clk"); if (c) c.textContent = new Date().toLoc
 
 async function boot() {
   try { S = await DB.getSettings(); }
-  catch (e) { app.innerHTML = `<div class="wrap">${alertBox("err", "Could not connect to the database. Check your internet connection and Firebase config.<br><small>" + esc(e.message) + "</small>")}</div>`; return; }
+  catch (e) { app.innerHTML = `<div class="wrap">${alertBox("err", t("db_fail") + "<br><small>" + esc(e.message) + "</small>")}</div>`; return; }
   route();
 }
 function route() {
@@ -263,29 +412,32 @@ function route() {
 function empView() {
   clearTimeout(resetTimer);
   app.innerHTML = `<div class="wrap">
-    <header class="top"><div><div class="brand">${esc(S.shopName)} · Time Clock</div><div class="sub">Enter your employee ID and PIN</div></div><div class="clock" id="clk"></div></header>
+    ${langBar()}
+    <header class="top"><div><div class="brand">${esc(S.shopName)} · ${t("title_clock")}</div><div class="sub">${t("enter_id_pin")}</div></div><div class="clock ltr" id="clk"></div></header>
     ${demoBanner()}
     <form class="card" id="lf" autocomplete="off">
-      <input id="eid" class="pin" style="letter-spacing:3px;text-transform:uppercase" placeholder="Employee ID" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
-      <input id="epin" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="off">
-      <button class="big in" type="submit" id="lb">Continue</button>
+      <input id="eid" class="pin" dir="ltr" style="letter-spacing:3px;text-transform:uppercase" placeholder="${t("emp_id")}" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+      <input id="epin" class="pin" dir="ltr" type="password" inputmode="numeric" maxlength="8" placeholder="${t("pin")}" autocomplete="off">
+      <button class="big in" type="submit" id="lb">${t("continue")}</button>
       <div id="msg"></div>
     </form>
-    <footer><span class="sub small">This phone: ${shortDev(deviceId())}</span></footer></div>`;
+    <footer><span class="sub small">${t("this_phone")}: ${shortDev(deviceId())}</span></footer></div>`;
+  bindLang(empView);
   $("#lf").onsubmit = async ev => {
     ev.preventDefault();
     const m = $("#msg"), lb = $("#lb");
+    const reset = () => { lb.disabled = false; lb.textContent = t("continue"); };
     const left = lockLeft();
-    if (left) { m.innerHTML = alertBox("err", `Too many wrong attempts on this phone. Try again in ${Math.ceil(left / 60000)} min.`); return; }
+    if (left) { m.innerHTML = alertBox("err", t("too_many", { n: Math.ceil(left / 60000) })); return; }
     const emp = $("#eid").value.trim().toUpperCase(), pin = $("#epin").value.trim();
-    if (!emp || !pin) { m.innerHTML = alertBox("err", "Enter your ID and PIN."); return; }
-    lb.disabled = true; lb.textContent = "Checking…";
-    try { S = await DB.getSettings(); } catch { lb.disabled = false; lb.textContent = "Continue"; m.innerHTML = alertBox("err", "No connection. Try again."); return; }
+    if (!emp || !pin) { m.innerHTML = alertBox("err", t("enter_both")); return; }
+    lb.disabled = true; lb.textContent = t("checking");
+    try { S = await DB.getSettings(); } catch { reset(); m.innerHTML = alertBox("err", t("no_conn")); return; }
     const known = S.employees.includes(emp);
-    if (known && !S.pins[emp]) { lb.disabled = false; lb.textContent = "Continue"; m.innerHTML = alertBox("warn", "Your PIN is not set up yet. Ask the admin."); return; }
+    if (known && !S.pins[emp]) { reset(); m.innerHTML = alertBox("warn", t("pin_not_set")); return; }
     if (!known || await sha(emp + ":" + pin) !== S.pins[emp]) {
-      failAttempt(); $("#epin").value = ""; lb.disabled = false; lb.textContent = "Continue";
-      m.innerHTML = alertBox("err", "Wrong ID or PIN."); return;
+      failAttempt(); $("#epin").value = ""; reset();
+      m.innerHTML = alertBox("err", t("wrong_id_pin")); return;
     }
     clearFails();
     empStep(emp);
@@ -293,31 +445,31 @@ function empView() {
 }
 
 async function empStep(emp) {
-  app.innerHTML = `<div class="wrap"><div class="card center"><div class="spinner"></div><p class="sub">Loading…</p></div></div>`;
+  app.innerHTML = `<div class="wrap"><div class="card center"><div class="spinner"></div><p class="sub">${t("loading")}</p></div></div>`;
   let st = null;
   try { S = await DB.getSettings(); st = await DB.getStatus(emp); }
-  catch (e) { app.innerHTML = `<div class="wrap">${alertBox("err", "No connection. Try again.")}</div>`; resetTimer = setTimeout(empView, 3000); return; }
+  catch (e) { app.innerHTML = `<div class="wrap">${alertBox("err", t("no_conn"))}</div>`; resetTimer = setTimeout(empView, 3000); return; }
   const next = st && st.state === "in" ? "out" : "in";
   app.innerHTML = `<div class="wrap"><div class="card">
-    <div class="who">${esc(emp)}</div>
-    <div class="state ${next === "out" ? "on" : ""}">${next === "out" ? "Clocked in since " + fmtWhen(st.t) : "Currently clocked out"}</div>
-    <button id="go" class="big ${next}">${next === "in" ? "Clock In" : "Clock Out"}</button>
+    <div class="who ltr">${esc(emp)}</div>
+    <div class="state ${next === "out" ? "on" : ""}">${next === "out" ? t("in_since", { t: fmtWhen(st.t) }) : t("currently_out")}</div>
+    <button id="go" class="big ${next}">${next === "in" ? t("clock_in") : t("clock_out")}</button>
     <div id="msg"></div>
-    <button id="back" class="link">Cancel / log out</button>
+    <button id="back" class="link">${t("cancel_logout")}</button>
   </div></div>`;
   $("#back").onclick = empView;
   $("#go").onclick = () => doPunch(emp, next);
-  resetTimer = setTimeout(empView, 60000); // auto-close if left open
+  resetTimer = setTimeout(empView, 60000);
 }
 
 async function doPunch(emp, type) {
-  const go = $("#go"), msg = $("#msg"), label = type === "in" ? "Clock In" : "Clock Out";
+  const go = $("#go"), msg = $("#msg"), label = type === "in" ? t("clock_in") : t("clock_out");
   const fail = html => { msg.innerHTML = html; go.disabled = false; go.textContent = label; };
   clearTimeout(resetTimer); resetTimer = setTimeout(empView, 60000);
 
-  if (!S.shop) return fail(alertBox("warn", "Shop location is not set. Ask the admin."));
+  if (!S.shop) return fail(alertBox("warn", t("shop_not_set")));
 
-  go.disabled = true; go.textContent = "Checking your location…"; msg.innerHTML = "";
+  go.disabled = true; go.textContent = t("checking_loc"); msg.innerHTML = "";
   let c;
   try { c = await getPos(); } catch (e) { return fail(alertBox("err", esc(e.message))); }
 
@@ -335,33 +487,29 @@ async function doPunch(emp, type) {
     fail(alertBox("err", html));
   };
 
-  // phone lock: each employee only from their own registered phone, one phone = one employee
   if (S.deviceLock) {
     let all;
-    try { all = await DB.allStatus(); } catch { return fail(alertBox("err", "No connection. Try again.")); }
+    try { all = await DB.allStatus(); } catch { return fail(alertBox("err", t("no_conn"))); }
     const mine = all[emp]?.device;
-    if (mine && mine !== dev)
-      return reject("other_device", `This phone is not registered to <b>${esc(emp)}</b>.<br>Clock in with your own phone. If you changed your phone, ask the admin to reset it.`);
-    if (Object.keys(all).some(e => e !== emp && all[e]?.device === dev))
-      return reject("device_taken", `This phone is registered to another employee.<br>Every employee must clock in with their own phone.`);
+    if (mine && mine !== dev) return reject("other_device", t("wrong_phone", { e: esc(emp) }));
+    if (Object.keys(all).some(e => e !== emp && all[e]?.device === dev)) return reject("device_taken", t("phone_taken"));
   }
 
   if (!inside && S.enforce) {
-    const accNote = rec.acc > S.radius ? `<br><small>GPS accuracy is weak (±${rec.acc} m). Step outside or near a window and try again.</small>` : "";
-    return reject("outside", `You are <b>${d} m</b> from the shop (allowed: ${S.radius} m).<br>Not recorded — you must be at the shop.${accNote}`);
+    const accNote = rec.acc > S.radius ? `<br><small>${t("weak_gps", { a: rec.acc })}</small>` : "";
+    return reject("outside", t("too_far", { d, r: S.radius }) + accNote);
   }
 
-  go.textContent = "Saving…";
+  go.textContent = t("saving");
   try { await DB.punch(rec, true); }
-  catch (e) { return fail(alertBox("err", "Could not save. Check your internet connection and try again.")); }
+  catch (e) { return fail(alertBox("err", t("save_fail"))); }
 
-  // success → confirmation, then the page clears itself
   app.innerHTML = `<div class="wrap"><div class="card center done ${type}">
     <div class="tick">✓</div>
-    <h2>${type === "in" ? "Clocked in" : "Clocked out"}</h2>
-    <div class="who">${esc(emp)} · ${fmtT(rec.t)}</div>
-    ${!inside ? `<p class="warnline">Recorded outside the shop area — flagged for admin.</p>` : ""}
-    <p class="sub">Sent to the Admin Center. This screen closes automatically.</p>
+    <h2>${type === "in" ? t("done_in") : t("done_out")}</h2>
+    <div class="who">${ltr(esc(emp) + " · " + fmtT(rec.t))}</div>
+    ${!inside ? `<p class="warnline">${t("done_outside")}</p>` : ""}
+    <p class="sub">${t("done_note")}</p>
   </div></div>`;
   resetTimer = setTimeout(empView, 4000);
 }
@@ -377,20 +525,21 @@ async function adminView() {
 
 function adminLogin() {
   const first = !S.adminHash;
-  app.innerHTML = `<div class="wrap"><div class="card narrow">
-    <h2 style="margin:0">Admin Center</h2>
-    <p class="sub" style="margin:0">${first ? "First time: create an admin PIN (at least 4 digits)." : "Enter the admin PIN."}</p>
-    <input id="ap" class="pin" type="password" inputmode="numeric" placeholder="Admin PIN">
-    ${first ? `<input id="ap2" class="pin" type="password" inputmode="numeric" placeholder="Repeat PIN">` : ""}
-    <button id="al" class="big in">${first ? "Create & enter" : "Enter"}</button>
+  app.innerHTML = `<div class="wrap"><div class="narrow">${langBar()}<div class="card">
+    <h2 style="margin:0">${t("admin_center")}</h2>
+    <p class="sub" style="margin:0">${first ? t("first_pin") : t("enter_admin_pin")}</p>
+    <input id="ap" class="pin" dir="ltr" type="password" inputmode="numeric" placeholder="${t("admin_pin")}">
+    ${first ? `<input id="ap2" class="pin" dir="ltr" type="password" inputmode="numeric" placeholder="${t("repeat_pin")}">` : ""}
+    <button id="al" class="big in">${first ? t("create_enter") : t("enter")}</button>
     <div id="msg"></div>
-  </div></div>`;
+  </div></div></div>`;
+  bindLang(adminLogin);
   $("#al").onclick = async () => {
     const v = $("#ap").value.trim(), m = $("#msg");
     if (first) {
-      if (v.length < 4 || v !== $("#ap2").value.trim()) { m.innerHTML = alertBox("err", "PINs must match and be at least 4 digits."); return; }
+      if (v.length < 4 || v !== $("#ap2").value.trim()) { m.innerHTML = alertBox("err", t("pins_match")); return; }
       S.adminHash = await sha("admin:" + v); await DB.saveSettings(S);
-    } else if (await sha("admin:" + v) !== S.adminHash) { m.innerHTML = alertBox("err", "Wrong PIN."); return; }
+    } else if (await sha("admin:" + v) !== S.adminHash) { m.innerHTML = alertBox("err", t("wrong_pin")); return; }
     try { sessionStorage.setItem("tc_admin", "1"); } catch {}
     adminShell();
   };
@@ -398,13 +547,16 @@ function adminLogin() {
 
 function adminShell() {
   clearInterval(liveTimer);
+  const np = S.employees.filter(e => !S.pins[e]);
   app.innerHTML = `<div class="wrap wide">
-    <header class="top"><div><div class="brand">Admin Center</div><div class="sub">${esc(S.shopName)}${DEMO ? " · DEMO MODE" : ""}</div></div>
-      <div><button class="ghost" id="lo">Log out</button></div></header>
-    ${!S.shop ? alertBox("warn", "Set the shop location in <b>Settings</b> — employees can't clock in until it's set.") + "<br>" : ""}
-    ${(() => { const np = S.employees.filter(e => !S.pins[e]); return np.length ? alertBox("warn", `<b>${np.length} employee(s) have no PIN and can't clock in yet:</b> ${np.map(esc).join(", ")}. Set PINs in <b>Settings → Employee PINs</b>.`) + "<br>" : ""; })()}
-    <nav class="tabs">${[["live", "Live board"], ["rec", "Records & hours"], ["set", "Settings"]].map(([k, l]) => `<button data-t="${k}" class="${adminTab === k ? "act" : ""}">${l}</button>`).join("")}</nav>
+    ${langBar()}
+    <header class="top"><div><div class="brand">${t("admin_center")}</div><div class="sub">${esc(S.shopName)}${DEMO ? " · " + t("demo_mode") : ""}</div></div>
+      <div><button class="ghost" id="lo">${t("logout")}</button></div></header>
+    ${!S.shop ? alertBox("warn", t("set_loc_warn")) + "<br>" : ""}
+    ${np.length ? alertBox("warn", t("no_pin_warn", { n: np.length, list: ltr(np.map(esc).join(", ")) })) + "<br>" : ""}
+    <nav class="tabs">${[["live", t("tab_live")], ["rec", t("tab_rec")], ["set", t("tab_set")]].map(([k, l]) => `<button data-t="${k}" class="${adminTab === k ? "act" : ""}">${l}</button>`).join("")}</nav>
     <div id="pane"><div class="spinner"></div></div></div>`;
+  bindLang(adminShell);
   app.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { adminTab = b.dataset.t; adminShell(); });
   $("#lo").onclick = () => { try { sessionStorage.removeItem("tc_admin"); } catch {} adminLogin(); };
   if (adminTab === "live") live(); else if (adminTab === "rec") records(); else settingsPane();
@@ -416,45 +568,44 @@ async function live() {
   try {
     const t0 = dayStart(Date.now());
     [st, today] = await Promise.all([DB.allStatus(), DB.punches(t0, nextDay(t0))]);
-  } catch (e) { pane.innerHTML = alertBox("err", "Could not load data: " + esc(e.message)); return; }
+  } catch (e) { pane.innerHTML = alertBox("err", t("load_fail") + esc(e.message)); return; }
   const hrs = calcHours(today, Date.now());
   const inCount = S.employees.filter(e => st[e]?.state === "in").length;
   const flags = today.filter(p => !p.inside || p.type.startsWith("rejected")).length;
   const shared = sharedPhones(today);
   const sharedEmps = new Set(Object.values(shared).flat());
   pane.innerHTML = `${sharedAlert(shared)}
-    <div class="stats"><div><b>${inCount}</b><span>clocked in now</span></div><div><b>${S.employees.length - inCount}</b><span>clocked out</span></div><div><b>${flags}</b><span>location flags today</span></div></div>
+    <div class="stats"><div><b>${inCount}</b><span>${t("in_now")}</span></div><div><b>${S.employees.length - inCount}</b><span>${t("out_now")}</span></div><div><b>${flags}</b><span>${t("flags_today")}</span></div></div>
     <div class="board">${S.employees.map(e => {
       const s = st[e], on = s?.state === "in";
       return `<div class="ecard ${on ? "on" : ""}">
-        <div class="eid">${esc(e)}</div><div class="est">${on ? "● IN" : "OUT"}</div>
-        <div class="emeta">${s ? (on ? "since " : "last out ") + fmtWhen(s.t) : "no records yet"}</div>
-        <div class="emeta">Today: ${fmtH(hrs[e]?.ms || 0)}${hrs[e]?.open ? " (running)" : ""}</div>
-        ${s && !s.inside ? `<span class="flag">outside shop area</span>` : ""}
-        ${sharedEmps.has(e) ? `<span class="flag red">shared phone today</span>` : ""}
+        <div class="eid ltr">${esc(e)}</div><div class="est">${on ? t("st_in") : t("st_out")}</div>
+        <div class="emeta">${s ? (on ? t("since", { t: fmtWhen(s.t) }) : t("last_out", { t: fmtWhen(s.t) })) : t("no_records")}</div>
+        <div class="emeta">${t("today_h", { h: fmtH(hrs[e]?.ms || 0) })}${hrs[e]?.open ? t("running") : ""}</div>
+        ${s && !s.inside ? `<span class="flag">${t("flag_outside")}</span>` : ""}
+        ${sharedEmps.has(e) ? `<span class="flag red">${t("flag_shared")}</span>` : ""}
       </div>`; }).join("")}</div>
-    <p class="sub small">Refreshes every 2 minutes · last update ${fmtT(Date.now())} · <button class="link" id="rf" style="font-size:12px">Refresh now</button></p>`;
+    <p class="sub small">${t("refresh_note", { t: ltr(fmtT(Date.now())) })} · <button class="link" id="rf" style="font-size:12px">${t("refresh_now")}</button></p>`;
   clearInterval(liveTimer);
   liveTimer = setInterval(() => { if (adminTab === "live" && $("#pane")) live(); else clearInterval(liveTimer); }, 120000);
   const rf = $("#rf"); if (rf) rf.onclick = live;
 }
 
+function rejReason(p) { return { outside: t("r_outside"), other_device: t("r_other"), device_taken: t("r_taken") }[p.reason] || t("r_outside"); }
+function statusText(p) { return p.type.startsWith("rejected") ? t("rej", { r: rejReason(p) }) : p.inside ? t("at_shop") : t("outside"); }
 function statusBadge(p) {
-  if (p.type.startsWith("rejected")) {
-    const r = { outside: "outside area", other_device: "wrong phone", device_taken: "another employee's phone" }[p.reason] || "outside area";
-    return `<span class="badge bad">Rejected – ${r}</span>`;
-  }
-  return p.inside ? `<span class="badge ok">At shop</span>` : `<span class="badge warn">Outside</span>`;
+  const cls = p.type.startsWith("rejected") ? "bad" : p.inside ? "ok" : "warn";
+  return `<span class="badge ${cls}">${statusText(p)}</span>`;
 }
-function actionLabel(t) { return t === "in" ? "Clock in" : t === "out" ? "Clock out" : t === "rejected_in" ? "Clock in (blocked)" : "Clock out (blocked)"; }
+function actionLabel(x) { return x === "in" ? t("a_in") : x === "out" ? t("a_out") : x === "rejected_in" ? t("a_rin") : t("a_rout"); }
 
 function records() {
   const pane = $("#pane"), today = isoDay(Date.now());
   pane.innerHTML = `<div class="filters">
-      <label>From<input type="date" id="f" value="${recF || today}"></label>
-      <label>To<input type="date" id="tt" value="${recT || today}"></label>
-      <label>Employee<select id="fe"><option value="">All employees</option>${S.employees.map(e => `<option ${recE === e ? "selected" : ""}>${esc(e)}</option>`).join("")}</select></label>
-      <button id="ld" class="btn">Show</button><button id="csv" class="ghost">Export CSV</button>
+      <label>${t("from")}<input type="date" id="f" value="${recF || today}"></label>
+      <label>${t("to")}<input type="date" id="tt" value="${recT || today}"></label>
+      <label>${t("employee")}<select id="fe"><option value="">${t("all_emps")}</option>${S.employees.map(e => `<option value="${esc(e)}" ${recE === e ? "selected" : ""}>${esc(e)}</option>`).join("")}</select></label>
+      <button id="ld" class="btn">${t("show")}</button><button id="csv" class="ghost">${t("export")}</button>
     </div><div id="res"></div>`;
   const load = async () => {
     recF = $("#f").value; recT = $("#tt").value; recE = $("#fe").value;
@@ -467,23 +618,23 @@ function records() {
     const shared = sharedPhones(ps);
     const hrs = calcHours(ps, to > Date.now() ? Date.now() : null);
     const emps = recE ? [recE] : S.employees;
-    res.innerHTML = `${sharedAlert(shared)}<h3>Hours</h3><div class="scroll"><table class="tbl"><thead><tr><th>Employee</th><th>Hours</th><th>Shifts</th><th>Location flags</th></tr></thead><tbody>
+    res.innerHTML = `${sharedAlert(shared)}<h3>${t("hours")}</h3><div class="scroll"><table class="tbl"><thead><tr><th>${t("employee")}</th><th>${t("hours")}</th><th>${t("shifts")}</th><th>${t("loc_flags")}</th></tr></thead><tbody>
       ${emps.map(e => { const h = hrs[e]; const f = ps.filter(p => p.emp === e && !p.inside).length;
-        return `<tr><td><b>${esc(e)}</b></td><td>${fmtH(h?.ms || 0)}${h?.open ? ` <span class="badge warn">${to > Date.now() ? "still in" : "no clock-out"}</span>` : ""}</td><td>${h?.shifts || 0}</td><td>${f ? `<span class="badge warn">${f}</span>` : "–"}</td></tr>`; }).join("")}
+        return `<tr><td><b class="ltr">${esc(e)}</b></td><td>${fmtH(h?.ms || 0)}${h?.open ? ` <span class="badge warn">${to > Date.now() ? t("still_in") : t("no_out")}</span>` : ""}</td><td>${h?.shifts || 0}</td><td>${f ? `<span class="badge warn">${f}</span>` : "–"}</td></tr>`; }).join("")}
       </tbody></table></div>
-      <h3>All entries (${ps.length})</h3>
-      ${ps.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Time</th><th>Employee</th><th>Action</th><th>Coordinates</th><th>Distance</th><th>GPS accuracy</th><th>Phone</th><th>Status</th><th>Map</th></tr></thead><tbody>
-      ${ps.slice().reverse().map(p => `<tr><td>${fmtD(p.t)}</td><td>${fmtT(p.t)}</td><td><b>${esc(p.emp)}</b></td><td>${actionLabel(p.type)}</td><td>${p.lat}, ${p.lng}</td><td>${p.dist} m</td><td>±${p.acc} m</td><td>${shortDev(p.deviceId)}${shared[p.deviceId] ? ` <span class="badge bad">shared</span>` : ""}</td><td>${statusBadge(p)}</td><td><a href="${mapUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open</a></td></tr>`).join("")}
-      </tbody></table></div>` : `<p class="sub">No entries in this period.</p>`}`;
+      <h3>${t("all_entries", { n: ps.length })}</h3>
+      ${ps.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>${t("date")}</th><th>${t("time")}</th><th>${t("employee")}</th><th>${t("action")}</th><th>${t("coords")}</th><th>${t("distance")}</th><th>${t("accuracy")}</th><th>${t("phone")}</th><th>${t("status")}</th><th>${t("map")}</th></tr></thead><tbody>
+      ${ps.slice().reverse().map(p => `<tr><td>${ltr(fmtD(p.t))}</td><td>${ltr(fmtT(p.t))}</td><td><b class="ltr">${esc(p.emp)}</b></td><td>${actionLabel(p.type)}</td><td>${ltr(p.lat + ", " + p.lng)}</td><td>${p.dist} ${t("m")}</td><td>±${p.acc} ${t("m")}</td><td>${shortDev(p.deviceId)}${shared[p.deviceId] ? ` <span class="badge bad">${t("shared_b")}</span>` : ""}</td><td>${statusBadge(p)}</td><td><a href="${mapUrl(p.lat, p.lng)}" target="_blank" rel="noopener">${t("open")}</a></td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="sub">${t("no_entries")}</p>`}`;
   };
   $("#ld").onclick = load;
   $("#csv").onclick = () => {
     if (!lastRows.length) return;
-    const head = ["Date", "Time", "Employee", "Action", "Status", "Distance_m", "Accuracy_m", "Latitude", "Longitude", "Phone_ID"];
-    const rows = lastRows.map(p => [fmtD(p.t), fmtT(p.t), p.emp, actionLabel(p.type), p.type.startsWith("rejected") ? "Rejected " + (p.reason || "outside") : p.inside ? "At shop" : "Outside", p.dist, p.acc, p.lat, p.lng, p.deviceId || ""]);
+    const head = [t("date"), t("time"), t("employee"), t("action"), t("status"), t("distance") + " (m)", t("accuracy") + " (m)", t("latitude"), t("longitude"), t("phone")];
+    const rows = lastRows.map(p => [fmtD(p.t), fmtT(p.t), p.emp, actionLabel(p.type), statusText(p), p.dist, p.acc, p.lat, p.lng, p.deviceId || ""]);
     const csv = [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
     a.download = `timeclock_${recF}_${recT}.csv`; a.click();
   };
   load();
@@ -492,51 +643,51 @@ function records() {
 function settingsPane() {
   const pane = $("#pane");
   pane.innerHTML = `<div class="set">
-    <section><h3>Shop location</h3>
-      <label>Shop name<input id="sn" value="${esc(S.shopName)}"></label>
-      <div class="row"><label>Latitude<input id="la" value="${S.shop ? S.shop.lat : ""}"></label><label>Longitude<input id="lg" value="${S.shop ? S.shop.lng : ""}"></label></div>
-      <div><button id="here" class="btn">📍 Use my current location</button> <span id="hm" class="sub small">Stand inside the shop when you press this.</span></div>
-      ${S.shop ? `<a href="${mapUrl(S.shop.lat, S.shop.lng)}" target="_blank" rel="noopener">Check the saved location on Google Maps</a>` : ""}
-      <label>Allowed radius around the shop (meters)<input id="rad" type="number" min="20" max="2000" value="${S.radius}"></label>
-      <label class="chk"><input type="checkbox" id="enf" ${S.enforce ? "checked" : ""}> Block clock-in/out from outside the radius (if unticked: record it but flag it)</label>
+    <section><h3>${t("s_shop")}</h3>
+      <label>${t("s_name")}<input id="sn" value="${esc(S.shopName)}"></label>
+      <div class="row"><label>${t("latitude")}<input id="la" dir="ltr" value="${S.shop ? S.shop.lat : ""}"></label><label>${t("longitude")}<input id="lg" dir="ltr" value="${S.shop ? S.shop.lng : ""}"></label></div>
+      <div><button id="here" class="btn">${t("use_loc")}</button> <span id="hm" class="sub small">${t("stand_inside")}</span></div>
+      ${S.shop ? `<a href="${mapUrl(S.shop.lat, S.shop.lng)}" target="_blank" rel="noopener">${t("check_map")}</a>` : ""}
+      <label>${t("radius")}<input id="rad" dir="ltr" type="number" min="20" max="2000" value="${S.radius}"></label>
+      <label class="chk"><input type="checkbox" id="enf" ${S.enforce ? "checked" : ""}> ${t("enforce")}</label>
     </section>
-    <section><h3>Phone lock</h3>
-      <label class="chk"><input type="checkbox" id="dl" ${S.deviceLock ? "checked" : ""}> Each employee can only clock in from their own registered phone (one phone = one employee)</label>
-      <p class="sub small" style="margin:0">A phone is registered automatically at the employee's first clock-in. Press <b>Reset</b> if they change phone, clear their browser data or switch browser.</p>
+    <section><h3>${t("s_lock")}</h3>
+      <label class="chk"><input type="checkbox" id="dl" ${S.deviceLock ? "checked" : ""}> ${t("lock_lbl")}</label>
+      <p class="sub small" style="margin:0">${t("lock_note")}</p>
       <div id="devs"><div class="spinner"></div></div></section>
-    <section><h3>Employees</h3><p class="sub small" style="margin:0">One employee ID per line.</p>
-      <textarea id="emps" rows="10">${esc(S.employees.join("\n"))}</textarea></section>
-    <section><h3>Employee PINs (required)</h3>
-      <p class="sub small" style="margin:0">Employees log in with their ID + PIN. Without a PIN they cannot clock in. Type a new PIN to set/change it; tick "remove" to delete it.</p>
-      <div>${S.employees.map(e => `<div class="pinrow"><b>${esc(e)}</b><span class="badge ${S.pins[e] ? "ok" : ""}">${S.pins[e] ? "PIN set" : "no PIN"}</span>
-        <input data-p="${esc(e)}" type="password" inputmode="numeric" placeholder="New PIN" autocomplete="new-password">
-        <label class="chk"><input type="checkbox" data-c="${esc(e)}"> remove</label></div>`).join("")}</div></section>
-    <section><h3>Admin PIN</h3><input id="nap" type="password" inputmode="numeric" placeholder="New admin PIN (leave empty to keep current)" autocomplete="new-password"></section>
-    <button id="sv" class="big in">Save settings</button><div id="msg"></div>
+    <section><h3>${t("s_emps")}</h3><p class="sub small" style="margin:0">${t("one_per_line")}</p>
+      <textarea id="emps" dir="ltr" rows="10">${esc(S.employees.join("\n"))}</textarea></section>
+    <section><h3>${t("s_pins")}</h3>
+      <p class="sub small" style="margin:0">${t("pins_note")}</p>
+      <div>${S.employees.map(e => `<div class="pinrow"><b class="ltr">${esc(e)}</b><span class="badge ${S.pins[e] ? "ok" : ""}">${S.pins[e] ? t("pin_set") : t("no_pin")}</span>
+        <input data-p="${esc(e)}" dir="ltr" type="password" inputmode="numeric" placeholder="${t("new_pin")}" autocomplete="new-password">
+        <label class="chk"><input type="checkbox" data-c="${esc(e)}"> ${t("remove")}</label></div>`).join("")}</div></section>
+    <section><h3>${t("admin_pin")}</h3><input id="nap" dir="ltr" type="password" inputmode="numeric" placeholder="${t("new_admin_pin")}" autocomplete="new-password"></section>
+    <button id="sv" class="big in">${t("save_settings")}</button><div id="msg"></div>
   </div>`;
 
   const renderDevs = async () => {
     const box = $("#devs"); if (!box) return;
     let all = {};
-    try { all = await DB.allStatus(); } catch (e) { box.innerHTML = alertBox("err", "Could not load phones."); return; }
+    try { all = await DB.allStatus(); } catch (e) { box.innerHTML = alertBox("err", t("phones_fail")); return; }
     box.innerHTML = S.employees.map(e => {
       const d = all[e]?.device;
-      return `<div class="devrow"><b>${esc(e)}</b><span>${d ? `<span class="badge ok">Phone ${shortDev(d)}</span>` : `<span class="badge">not registered yet</span>`}</span>
-        ${d ? `<button class="ghost" data-r="${esc(e)}">Reset</button>` : "<span></span>"}</div>`;
+      return `<div class="devrow"><b class="ltr">${esc(e)}</b><span>${d ? `<span class="badge ok">${t("phone")} ${shortDev(d)}</span>` : `<span class="badge">${t("not_reg")}</span>`}</span>
+        ${d ? `<button class="ghost" data-r="${esc(e)}">${t("reset")}</button>` : "<span></span>"}</div>`;
     }).join("");
     box.querySelectorAll("[data-r]").forEach(b => b.onclick = async () => {
-      if (!confirm(`Reset the phone for ${b.dataset.r}? Their next clock-in will register the new phone.`)) return;
+      if (!confirm(t("reset_confirm", { e: b.dataset.r }))) return;
       b.disabled = true;
-      try { await DB.setDevice(b.dataset.r, null); } catch (e) { alert("Could not reset: " + e.message); }
+      try { await DB.setDevice(b.dataset.r, null); } catch (e) { alert(t("reset_fail") + e.message); }
       renderDevs();
     });
   };
   renderDevs();
 
   $("#here").onclick = async () => {
-    const hm = $("#hm"); hm.textContent = "Getting location…";
+    const hm = $("#hm"); hm.textContent = t("getting_loc");
     try { const c = await getPos(); $("#la").value = c.latitude.toFixed(6); $("#lg").value = c.longitude.toFixed(6);
-      hm.textContent = `Got it (accuracy ±${Math.round(c.accuracy)} m). Press Save.`; }
+      hm.textContent = t("got_loc", { a: Math.round(c.accuracy) }); }
     catch (e) { hm.textContent = e.message; }
   };
 
@@ -544,24 +695,24 @@ function settingsPane() {
     const m = $("#msg");
     const lat = parseFloat($("#la").value), lng = parseFloat($("#lg").value), rad = parseInt($("#rad").value, 10);
     const emps = [...new Set($("#emps").value.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean))];
-    if (($("#la").value || $("#lg").value) && (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) { m.innerHTML = alertBox("err", "Latitude/longitude are not valid."); return; }
-    if (!(rad >= 20 && rad <= 2000)) { m.innerHTML = alertBox("err", "Radius must be between 20 and 2000 m."); return; }
-    if (!emps.length) { m.innerHTML = alertBox("err", "Add at least one employee."); return; }
+    if (($("#la").value || $("#lg").value) && (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) { m.innerHTML = alertBox("err", t("bad_coords")); return; }
+    if (!(rad >= 20 && rad <= 2000)) { m.innerHTML = alertBox("err", t("bad_radius")); return; }
+    if (!emps.length) { m.innerHTML = alertBox("err", t("need_emp")); return; }
 
     const pins = { ...S.pins };
     for (const inp of pane.querySelectorAll("[data-p]")) {
       const e = inp.dataset.p, v = inp.value.trim();
-      if (v) { if (v.length < 4) { m.innerHTML = alertBox("err", `PIN for ${esc(e)} must be at least 4 digits.`); return; } pins[e] = await sha(e + ":" + v); }
+      if (v) { if (v.length < 4) { m.innerHTML = alertBox("err", t("pin_short", { e: esc(e) })); return; } pins[e] = await sha(e + ":" + v); }
     }
     pane.querySelectorAll("[data-c]").forEach(c => { if (c.checked) delete pins[c.dataset.c]; });
 
     const nap = $("#nap").value.trim();
-    if (nap && nap.length < 4) { m.innerHTML = alertBox("err", "Admin PIN must be at least 4 digits."); return; }
+    if (nap && nap.length < 4) { m.innerHTML = alertBox("err", t("admin_short")); return; }
 
     const ns = { ...S, shopName: $("#sn").value.trim() || "Shop", shop: isNaN(lat) ? null : { lat, lng }, radius: rad, enforce: $("#enf").checked, deviceLock: $("#dl").checked, employees: emps, pins };
     if (nap) ns.adminHash = await sha("admin:" + nap);
-    try { await DB.saveSettings(ns); S = ns; adminShell(); setTimeout(() => { const mm = $("#msg"); if (mm) mm.innerHTML = alertBox("ok", "Settings saved."); }, 50); }
-    catch (e) { m.innerHTML = alertBox("err", "Could not save: " + esc(e.message)); }
+    try { await DB.saveSettings(ns); S = ns; adminShell(); setTimeout(() => { const mm = $("#msg"); if (mm) mm.innerHTML = alertBox("ok", t("saved")); }, 50); }
+    catch (e) { m.innerHTML = alertBox("err", t("save_err") + esc(e.message)); }
   };
 }
 
