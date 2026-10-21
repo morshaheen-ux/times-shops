@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Shop Time Clock</title>
+<title>Time Clock</title>
 <style>
 :root{
   --bg:#f4f5f7;--card:#fff;--ink:#16181d;--mute:#6b7280;--line:#e5e7eb;
@@ -114,6 +114,8 @@ const FIREBASE_CONFIG = {
   appId: "1:990664937035:web:d29dd9d5e960ded9eb87ce"
 };
 
+const MODE = "employee"; // "employee" (index.html) or "admin" (admin.html)
+
 const DEFAULT_EMPLOYEES = ["LUAB01","ALMO03","AHRA06","ABRE07","ALAH08","ALMU10","MOMO13","KHIB15","ALBA18","ABQA23"];
 
 /* ---------------- data layer ---------------- */
@@ -200,6 +202,9 @@ function deviceId() {
   }
   return id;
 }
+function lockLeft() { const f = LS.get("fails", { n: 0, until: 0 }); return f.until > Date.now() ? f.until - Date.now() : 0; }
+function failAttempt() { const f = LS.get("fails", { n: 0, until: 0 }); f.n++; if (f.n >= 5) { f.n = 0; f.until = Date.now() + 5 * 60000; } LS.set("fails", f); }
+function clearFails() { LS.set("fails", { n: 0, until: 0 }); }
 const shortDev = d => d ? "…" + String(d).slice(-4) : "–";
 // phones used by more than one employee: { deviceId: [emp, emp] }
 function sharedPhones(ps) {
@@ -242,7 +247,6 @@ const demoBanner = () => DEMO ? alertBox("warn demo", "<b>Demo mode</b> — data
 
 /* ---------------- routing ---------------- */
 let S = null, resetTimer = null, liveTimer = null;
-window.addEventListener("hashchange", route);
 setInterval(() => { const c = $("#clk"); if (c) c.textContent = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }, 1000);
 
 async function boot() {
@@ -252,19 +256,40 @@ async function boot() {
 }
 function route() {
   clearTimeout(resetTimer); clearInterval(liveTimer);
-  location.hash === "#admin" ? adminView() : empView();
+  MODE === "admin" ? adminView() : empView();
 }
 
 /* ---------------- EMPLOYEE SCREEN ---------------- */
 function empView() {
   clearTimeout(resetTimer);
   app.innerHTML = `<div class="wrap">
-    <header class="top"><div><div class="brand">${esc(S.shopName)} · Time Clock</div><div class="sub">Tap your employee ID</div></div><div class="clock" id="clk"></div></header>
+    <header class="top"><div><div class="brand">${esc(S.shopName)} · Time Clock</div><div class="sub">Enter your employee ID and PIN</div></div><div class="clock" id="clk"></div></header>
     ${demoBanner()}
-    ${!S.shop ? alertBox("warn", "The shop location is not set yet. The admin must set it in the Admin Center before anyone can clock in.") + "<br>" : ""}
-    <div class="grid">${S.employees.map(e => `<button class="idbtn" data-e="${esc(e)}">${esc(e)}</button>`).join("")}</div>
-    <footer><span class="sub small">This phone: ${shortDev(deviceId())}</span> · <a href="#admin">Admin Center</a></footer></div>`;
-  app.querySelectorAll(".idbtn").forEach(b => b.onclick = () => empStep(b.dataset.e));
+    <form class="card" id="lf" autocomplete="off">
+      <input id="eid" class="pin" style="letter-spacing:3px;text-transform:uppercase" placeholder="Employee ID" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+      <input id="epin" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="off">
+      <button class="big in" type="submit" id="lb">Continue</button>
+      <div id="msg"></div>
+    </form>
+    <footer><span class="sub small">This phone: ${shortDev(deviceId())}</span></footer></div>`;
+  $("#lf").onsubmit = async ev => {
+    ev.preventDefault();
+    const m = $("#msg"), lb = $("#lb");
+    const left = lockLeft();
+    if (left) { m.innerHTML = alertBox("err", `Too many wrong attempts on this phone. Try again in ${Math.ceil(left / 60000)} min.`); return; }
+    const emp = $("#eid").value.trim().toUpperCase(), pin = $("#epin").value.trim();
+    if (!emp || !pin) { m.innerHTML = alertBox("err", "Enter your ID and PIN."); return; }
+    lb.disabled = true; lb.textContent = "Checking…";
+    try { S = await DB.getSettings(); } catch { lb.disabled = false; lb.textContent = "Continue"; m.innerHTML = alertBox("err", "No connection. Try again."); return; }
+    const known = S.employees.includes(emp);
+    if (known && !S.pins[emp]) { lb.disabled = false; lb.textContent = "Continue"; m.innerHTML = alertBox("warn", "Your PIN is not set up yet. Ask the admin."); return; }
+    if (!known || await sha(emp + ":" + pin) !== S.pins[emp]) {
+      failAttempt(); $("#epin").value = ""; lb.disabled = false; lb.textContent = "Continue";
+      m.innerHTML = alertBox("err", "Wrong ID or PIN."); return;
+    }
+    clearFails();
+    empStep(emp);
+  };
 }
 
 async function empStep(emp) {
@@ -273,29 +298,23 @@ async function empStep(emp) {
   try { S = await DB.getSettings(); st = await DB.getStatus(emp); }
   catch (e) { app.innerHTML = `<div class="wrap">${alertBox("err", "No connection. Try again.")}</div>`; resetTimer = setTimeout(empView, 3000); return; }
   const next = st && st.state === "in" ? "out" : "in";
-  const needPin = !!S.pins[emp];
   app.innerHTML = `<div class="wrap"><div class="card">
     <div class="who">${esc(emp)}</div>
     <div class="state ${next === "out" ? "on" : ""}">${next === "out" ? "Clocked in since " + fmtWhen(st.t) : "Currently clocked out"}</div>
-    ${needPin ? `<input id="pin" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Your PIN" autocomplete="off">` : ""}
     <button id="go" class="big ${next}">${next === "in" ? "Clock In" : "Clock Out"}</button>
     <div id="msg"></div>
-    <button id="back" class="link">Cancel</button>
+    <button id="back" class="link">Cancel / log out</button>
   </div></div>`;
   $("#back").onclick = empView;
-  $("#go").onclick = () => doPunch(emp, next, needPin);
+  $("#go").onclick = () => doPunch(emp, next);
   resetTimer = setTimeout(empView, 60000); // auto-close if left open
 }
 
-async function doPunch(emp, type, needPin) {
+async function doPunch(emp, type) {
   const go = $("#go"), msg = $("#msg"), label = type === "in" ? "Clock In" : "Clock Out";
   const fail = html => { msg.innerHTML = html; go.disabled = false; go.textContent = label; };
   clearTimeout(resetTimer); resetTimer = setTimeout(empView, 60000);
 
-  if (needPin) {
-    const v = ($("#pin").value || "").trim();
-    if (!v || await sha(emp + ":" + v) !== S.pins[emp]) return fail(alertBox("err", "Wrong PIN."));
-  }
   if (!S.shop) return fail(alertBox("warn", "Shop location is not set. Ask the admin."));
 
   go.disabled = true; go.textContent = "Checking your location…"; msg.innerHTML = "";
@@ -365,7 +384,6 @@ function adminLogin() {
     ${first ? `<input id="ap2" class="pin" type="password" inputmode="numeric" placeholder="Repeat PIN">` : ""}
     <button id="al" class="big in">${first ? "Create & enter" : "Enter"}</button>
     <div id="msg"></div>
-    <a class="link" href="#">← Back to employee screen</a>
   </div></div>`;
   $("#al").onclick = async () => {
     const v = $("#ap").value.trim(), m = $("#msg");
@@ -382,12 +400,13 @@ function adminShell() {
   clearInterval(liveTimer);
   app.innerHTML = `<div class="wrap wide">
     <header class="top"><div><div class="brand">Admin Center</div><div class="sub">${esc(S.shopName)}${DEMO ? " · DEMO MODE" : ""}</div></div>
-      <div style="display:flex;gap:8px"><a class="ghost" href="#" style="text-decoration:none">Employee screen</a><button class="ghost" id="lo">Log out</button></div></header>
+      <div><button class="ghost" id="lo">Log out</button></div></header>
     ${!S.shop ? alertBox("warn", "Set the shop location in <b>Settings</b> — employees can't clock in until it's set.") + "<br>" : ""}
+    ${(() => { const np = S.employees.filter(e => !S.pins[e]); return np.length ? alertBox("warn", `<b>${np.length} employee(s) have no PIN and can't clock in yet:</b> ${np.map(esc).join(", ")}. Set PINs in <b>Settings → Employee PINs</b>.`) + "<br>" : ""; })()}
     <nav class="tabs">${[["live", "Live board"], ["rec", "Records & hours"], ["set", "Settings"]].map(([k, l]) => `<button data-t="${k}" class="${adminTab === k ? "act" : ""}">${l}</button>`).join("")}</nav>
     <div id="pane"><div class="spinner"></div></div></div>`;
   app.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { adminTab = b.dataset.t; adminShell(); });
-  $("#lo").onclick = () => { try { sessionStorage.removeItem("tc_admin"); } catch {} location.hash = ""; };
+  $("#lo").onclick = () => { try { sessionStorage.removeItem("tc_admin"); } catch {} adminLogin(); };
   if (adminTab === "live") live(); else if (adminTab === "rec") records(); else settingsPane();
 }
 
@@ -416,7 +435,7 @@ async function live() {
       </div>`; }).join("")}</div>
     <p class="sub small">Refreshes every 2 minutes · last update ${fmtT(Date.now())} · <button class="link" id="rf" style="font-size:12px">Refresh now</button></p>`;
   clearInterval(liveTimer);
-  liveTimer = setInterval(() => { if (adminTab === "live" && location.hash === "#admin" && $("#pane")) live(); else clearInterval(liveTimer); }, 120000);
+  liveTimer = setInterval(() => { if (adminTab === "live" && $("#pane")) live(); else clearInterval(liveTimer); }, 120000);
   const rf = $("#rf"); if (rf) rf.onclick = live;
 }
 
@@ -487,8 +506,8 @@ function settingsPane() {
       <div id="devs"><div class="spinner"></div></div></section>
     <section><h3>Employees</h3><p class="sub small" style="margin:0">One employee ID per line.</p>
       <textarea id="emps" rows="10">${esc(S.employees.join("\n"))}</textarea></section>
-    <section><h3>Employee PINs (optional)</h3>
-      <p class="sub small" style="margin:0">A personal PIN stops colleagues from clocking in for each other. Type a new PIN to set/change it; tick "remove" to delete it.</p>
+    <section><h3>Employee PINs (required)</h3>
+      <p class="sub small" style="margin:0">Employees log in with their ID + PIN. Without a PIN they cannot clock in. Type a new PIN to set/change it; tick "remove" to delete it.</p>
       <div>${S.employees.map(e => `<div class="pinrow"><b>${esc(e)}</b><span class="badge ${S.pins[e] ? "ok" : ""}">${S.pins[e] ? "PIN set" : "no PIN"}</span>
         <input data-p="${esc(e)}" type="password" inputmode="numeric" placeholder="New PIN" autocomplete="new-password">
         <label class="chk"><input type="checkbox" data-c="${esc(e)}"> remove</label></div>`).join("")}</div></section>

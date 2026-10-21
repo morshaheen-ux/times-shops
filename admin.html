@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Admin Center</title>
+<style>
+:root{
+  --bg:#f4f5f7;--card:#fff;--ink:#16181d;--mute:#6b7280;--line:#e5e7eb;
+  --green:#14804a;--green-bg:#e7f6ee;--red:#c0362c;--red-bg:#fdecea;
+  --amber:#a35b00;--amber-bg:#fff4e0;--blue:#1d4ed8;--radius:14px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1115;--card:#181b21;--ink:#eef0f3;--mute:#9aa1ad;--line:#2a2e36;
+  --green:#3fcf85;--green-bg:#123122;--red:#ff6b5f;--red-bg:#3a1714;
+  --amber:#ffb54a;--amber-bg:#3a2a10;--blue:#7aa2ff;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+.wrap.wide{max-width:1100px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 18px}
+.brand{font-weight:700;font-size:20px}
+.sub{color:var(--mute);font-size:14px}
+.small{font-size:12px}
+.clock{font-variant-numeric:tabular-nums;font-size:28px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.idbtn{padding:22px 10px;font-size:20px;font-weight:700;letter-spacing:.5px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink);cursor:pointer}
+.idbtn:active{transform:scale(.98)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;display:flex;flex-direction:column;gap:14px}
+.card.center{align-items:center;text-align:center;padding:40px 22px}
+.narrow{max-width:380px;margin:40px auto}
+.who{font-size:26px;font-weight:800;text-align:center}
+.state{text-align:center;padding:8px 12px;border-radius:999px;background:var(--bg);color:var(--mute);font-weight:600}
+.state.on{background:var(--green-bg);color:var(--green)}
+.big{border:0;border-radius:var(--radius);padding:20px;font-size:20px;font-weight:800;color:#fff;cursor:pointer;width:100%}
+.big.in{background:var(--green)}.big.out{background:var(--red)}
+.big:disabled{opacity:.6}
+.btn{border:0;border-radius:10px;padding:10px 14px;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
+.ghost{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:transparent;color:var(--ink);font-weight:600;cursor:pointer}
+.link{background:none;border:0;color:var(--mute);text-decoration:underline;cursor:pointer;font-size:15px;text-align:center}
+a{color:var(--blue)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+.pin{text-align:center;font-size:22px;letter-spacing:6px}
+.alert{border-radius:10px;padding:12px 14px;font-size:15px}
+.alert.err{background:var(--red-bg);color:var(--red)}
+.alert.warn{background:var(--amber-bg);color:var(--amber)}
+.alert.ok{background:var(--green-bg);color:var(--green)}
+.demo{margin-bottom:14px}
+.tick{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font-size:46px;color:#fff;background:var(--green)}
+.done.out .tick{background:var(--red)}
+.done h2{margin:0;font-size:28px}
+.warnline{color:var(--amber);font-weight:600}
+footer{text-align:center;margin-top:28px}
+footer a{color:var(--mute);font-size:13px}
+.spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 16px;border-radius:999px;font-weight:600;cursor:pointer}
+.tabs button.act{background:var(--ink);color:var(--bg)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;text-align:center}
+.stats b{display:block;font-size:26px}.stats span{color:var(--mute);font-size:13px}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.ecard{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:12px;padding:12px}
+.ecard.on{border-left-color:var(--green)}
+.eid{font-weight:800;font-size:17px}
+.est{font-weight:800;font-size:13px;color:var(--mute)}.ecard.on .est{color:var(--green)}
+.emeta{font-size:13px;color:var(--mute)}
+.flag{display:inline-block;margin-top:4px;font-size:12px;font-weight:700;color:var(--amber);background:var(--amber-bg);padding:2px 8px;border-radius:999px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px}
+.filters label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:4px;min-width:140px;flex:1}
+.filters button{height:44px}
+.tbl{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--radius);overflow:hidden;font-size:14px}
+.tbl th,.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.tbl th{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.4px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:18px}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bg);color:var(--mute)}
+.badge.ok{background:var(--green-bg);color:var(--green)}
+.badge.bad{background:var(--red-bg);color:var(--red)}
+.badge.warn{background:var(--amber-bg);color:var(--amber)}
+.set section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
+.set h3{margin:0}
+.set label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mute)}
+.set label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
+.set label.chk input{width:auto}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.pinrow{display:grid;grid-template-columns:90px 80px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.pinrow:last-child{border-bottom:0}
+.devrow{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.devrow:last-child{border-bottom:0}
+.flag.red{color:var(--red);background:var(--red-bg)}
+@media (max-width:520px){.pinrow{grid-template-columns:1fr 1fr}.clock{font-size:22px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* =========================================================
+   1) PASTE YOUR FIREBASE CONFIG HERE
+   (Firebase console → Project settings → Your apps → Web app)
+   While apiKey is "YOUR_API_KEY" the app runs in DEMO MODE
+   (data stays on this one device only).
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArumq8TusHJNDwsG5TTFASHq2tOYcrwg8",
+  authDomain: "dsp-hours.firebaseapp.com",
+  projectId: "dsp-hours",
+  storageBucket: "dsp-hours.firebasestorage.app",
+  messagingSenderId: "990664937035",
+  appId: "1:990664937035:web:d29dd9d5e960ded9eb87ce"
+};
+
+const MODE = "admin"; // "employee" (index.html) or "admin" (admin.html)
+
+const DEFAULT_EMPLOYEES = ["LUAB01","ALMO03","AHRA06","ABRE07","ALAH08","ALMU10","MOMO13","KHIB15","ALBA18","ABQA23"];
+
+/* ---------------- data layer ---------------- */
+const DEMO = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY" || typeof firebase === "undefined";
+let fs = null;
+if (!DEMO) { firebase.initializeApp(FIREBASE_CONFIG); fs = firebase.firestore(); }
+
+const LS = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem("tc_" + k)); return v ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("tc_" + k, JSON.stringify(v)); } catch {} }
+};
+
+const DB = {
+  async getSettings() {
+    const def = { shopName: "Shop", employees: DEFAULT_EMPLOYEES.slice(), shop: null, radius: 100, enforce: true, deviceLock: true, adminHash: null, pins: {} };
+    let s = null;
+    if (DEMO) s = LS.get("settings", null);
+    else { const d = await fs.collection("timeclock_settings").doc("main").get(); s = d.exists ? d.data() : null; }
+    const out = Object.assign(def, s || {});
+    out.pins = out.pins || {};
+    return out;
+  },
+  async saveSettings(s) {
+    if (DEMO) LS.set("settings", s);
+    else await fs.collection("timeclock_settings").doc("main").set(s);
+  },
+  async getStatus(emp) {
+    if (DEMO) return LS.get("status", {})[emp] || null;
+    const d = await fs.collection("timeclock_status").doc(emp).get();
+    return d.exists ? d.data() : null;
+  },
+  async allStatus() {
+    if (DEMO) return LS.get("status", {});
+    const q = await fs.collection("timeclock_status").get();
+    const o = {}; q.forEach(d => o[d.id] = d.data()); return o;
+  },
+  async punch(p, updateStatus) {
+    if (DEMO) {
+      const a = LS.get("punches", []); a.push({ ...p, id: String(Date.now()) }); LS.set("punches", a);
+      if (updateStatus) { const st = LS.get("status", {}); st[p.emp] = { ...(st[p.emp] || {}), state: p.type, t: p.t, inside: p.inside, device: p.deviceId }; LS.set("status", st); }
+      return;
+    }
+    const batch = fs.batch();
+    batch.set(fs.collection("timeclock_punches").doc(), { ...p, serverTime: firebase.firestore.FieldValue.serverTimestamp() });
+    if (updateStatus) batch.set(fs.collection("timeclock_status").doc(p.emp), { state: p.type, t: p.t, inside: p.inside, device: p.deviceId }, { merge: true });
+    await batch.commit();
+  },
+  async setDevice(emp, dev) {
+    if (DEMO) { const st = LS.get("status", {}); st[emp] = { ...(st[emp] || {}), device: dev }; LS.set("status", st); return; }
+    await fs.collection("timeclock_status").doc(emp).set({ device: dev }, { merge: true });
+  },
+  async punches(from, to) {
+    if (DEMO) return LS.get("punches", []).filter(p => p.t >= from && p.t < to).sort((a, b) => a.t - b.t);
+    const q = await fs.collection("timeclock_punches").where("t", ">=", from).where("t", "<", to).orderBy("t").get();
+    return q.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+};
+
+/* ---------------- helpers ---------------- */
+const app = document.getElementById("app");
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtT = t => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+const fmtD = t => new Date(t).toLocaleDateString("de-DE");
+const isToday = t => fmtD(t) === fmtD(Date.now());
+const fmtWhen = t => (isToday(t) ? "" : fmtD(t) + " ") + fmtT(t);
+const fmtH = ms => { const m = Math.round(ms / 60000); return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"; };
+const isoDay = t => { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const nextDay = t => { const d = new Date(t); d.setDate(d.getDate() + 1); return d.getTime(); };
+const mapUrl = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;
+const alertBox = (cls, txt) => `<div class="alert ${cls}">${txt}</div>`;
+
+async function sha(s) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+function deviceId() {
+  let id = null;
+  try { id = localStorage.getItem("tc_device"); } catch {}
+  if (!id) {
+    id = "P" + Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-4).toUpperCase();
+    try { localStorage.setItem("tc_device", id); } catch {}
+  }
+  return id;
+}
+function lockLeft() { const f = LS.get("fails", { n: 0, until: 0 }); return f.until > Date.now() ? f.until - Date.now() : 0; }
+function failAttempt() { const f = LS.get("fails", { n: 0, until: 0 }); f.n++; if (f.n >= 5) { f.n = 0; f.until = Date.now() + 5 * 60000; } LS.set("fails", f); }
+function clearFails() { LS.set("fails", { n: 0, until: 0 }); }
+const shortDev = d => d ? "…" + String(d).slice(-4) : "–";
+// phones used by more than one employee: { deviceId: [emp, emp] }
+function sharedPhones(ps) {
+  const m = {};
+  ps.forEach(p => { if (p.deviceId) (m[p.deviceId] = m[p.deviceId] || new Set()).add(p.emp); });
+  const out = {};
+  for (const k in m) if (m[k].size > 1) out[k] = [...m[k]];
+  return out;
+}
+const sharedAlert = sh => Object.keys(sh).length ? alertBox("err", "<b>⚠ Same phone used for different employees:</b><br>" +
+  Object.entries(sh).map(([d, es]) => `Phone ${shortDev(d)} → ${es.map(esc).join(", ")}`).join("<br>")) + "<br>" : "";
+function getPos() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error("This device does not support GPS location."));
+    navigator.geolocation.getCurrentPosition(
+      p => res(p.coords),
+      e => rej(new Error(e.code === 1 ? "Location permission denied. Allow location access for this site in your browser settings, then try again."
+        : e.code === 3 ? "GPS timed out. Make sure location is turned on and try again." : "Could not get your location. Try again.")),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  });
+}
+function distM(a, b) {
+  const R = 6371000, r = x => x * Math.PI / 180;
+  const dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function calcHours(ps, now) {
+  const r = {}, open = {};
+  ps.filter(p => p.type === "in" || p.type === "out").sort((a, b) => a.t - b.t).forEach(p => {
+    r[p.emp] = r[p.emp] || { ms: 0, open: false, shifts: 0 };
+    if (p.type === "in") { open[p.emp] = p.t; r[p.emp].shifts++; }
+    else if (open[p.emp] != null) { r[p.emp].ms += p.t - open[p.emp]; open[p.emp] = null; }
+  });
+  for (const e in open) if (open[e] != null) { r[e].open = true; if (now) r[e].ms += now - open[e]; }
+  return r;
+}
+const demoBanner = () => DEMO ? alertBox("warn demo", "<b>Demo mode</b> — data is saved on this device only. Add your Firebase config to connect all phones to the Admin Center.") : "";
+
+/* ---------------- routing ---------------- */
+let S = null, resetTimer = null, liveTimer = null;
+setInterval(() => { const c = $("#clk"); if (c) c.textContent = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }, 1000);
+
+async function boot() {
+  try { S = await DB.getSettings(); }
+  catch (e) { app.innerHTML = `<div class="wrap">${alertBox("err", "Could not connect to the database. Check your internet connection and Firebase config.<br><small>" + esc(e.message) + "</small>")}</div>`; return; }
+  route();
+}
+function route() {
+  clearTimeout(resetTimer); clearInterval(liveTimer);
+  MODE === "admin" ? adminView() : empView();
+}
+
+/* ---------------- EMPLOYEE SCREEN ---------------- */
+function empView() {
+  clearTimeout(resetTimer);
+  app.innerHTML = `<div class="wrap">
+    <header class="top"><div><div class="brand">${esc(S.shopName)} · Time Clock</div><div class="sub">Enter your employee ID and PIN</div></div><div class="clock" id="clk"></div></header>
+    ${demoBanner()}
+    <form class="card" id="lf" autocomplete="off">
+      <input id="eid" class="pin" style="letter-spacing:3px;text-transform:uppercase" placeholder="Employee ID" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+      <input id="epin" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="off">
+      <button class="big in" type="submit" id="lb">Continue</button>
+      <div id="msg"></div>
+    </form>
+    <footer><span class="sub small">This phone: ${shortDev(deviceId())}</span></footer></div>`;
+  $("#lf").onsubmit = async ev => {
+    ev.preventDefault();
+    const m = $("#msg"), lb = $("#lb");
+    const left = lockLeft();
+    if (left) { m.innerHTML = alertBox("err", `Too many wrong attempts on this phone. Try again in ${Math.ceil(left / 60000)} min.`); return; }
+    const emp = $("#eid").value.trim().toUpperCase(), pin = $("#epin").value.trim();
+    if (!emp || !pin) { m.innerHTML = alertBox("err", "Enter your ID and PIN."); return; }
+    lb.disabled = true; lb.textContent = "Checking…";
+    try { S = await DB.getSettings(); } catch { lb.disabled = false; lb.textContent = "Continue"; m.innerHTML = alertBox("err", "No connection. Try again."); return; }
+    const known = S.employees.includes(emp);
+    if (known && !S.pins[emp]) { lb.disabled = false; lb.textContent = "Continue"; m.innerHTML = alertBox("warn", "Your PIN is not set up yet. Ask the admin."); return; }
+    if (!known || await sha(emp + ":" + pin) !== S.pins[emp]) {
+      failAttempt(); $("#epin").value = ""; lb.disabled = false; lb.textContent = "Continue";
+      m.innerHTML = alertBox("err", "Wrong ID or PIN."); return;
+    }
+    clearFails();
+    empStep(emp);
+  };
+}
+
+async function empStep(emp) {
+  app.innerHTML = `<div class="wrap"><div class="card center"><div class="spinner"></div><p class="sub">Loading…</p></div></div>`;
+  let st = null;
+  try { S = await DB.getSettings(); st = await DB.getStatus(emp); }
+  catch (e) { app.innerHTML = `<div class="wrap">${alertBox("err", "No connection. Try again.")}</div>`; resetTimer = setTimeout(empView, 3000); return; }
+  const next = st && st.state === "in" ? "out" : "in";
+  app.innerHTML = `<div class="wrap"><div class="card">
+    <div class="who">${esc(emp)}</div>
+    <div class="state ${next === "out" ? "on" : ""}">${next === "out" ? "Clocked in since " + fmtWhen(st.t) : "Currently clocked out"}</div>
+    <button id="go" class="big ${next}">${next === "in" ? "Clock In" : "Clock Out"}</button>
+    <div id="msg"></div>
+    <button id="back" class="link">Cancel / log out</button>
+  </div></div>`;
+  $("#back").onclick = empView;
+  $("#go").onclick = () => doPunch(emp, next);
+  resetTimer = setTimeout(empView, 60000); // auto-close if left open
+}
+
+async function doPunch(emp, type) {
+  const go = $("#go"), msg = $("#msg"), label = type === "in" ? "Clock In" : "Clock Out";
+  const fail = html => { msg.innerHTML = html; go.disabled = false; go.textContent = label; };
+  clearTimeout(resetTimer); resetTimer = setTimeout(empView, 60000);
+
+  if (!S.shop) return fail(alertBox("warn", "Shop location is not set. Ask the admin."));
+
+  go.disabled = true; go.textContent = "Checking your location…"; msg.innerHTML = "";
+  let c;
+  try { c = await getPos(); } catch (e) { return fail(alertBox("err", esc(e.message))); }
+
+  const d = Math.round(distM(S.shop, { lat: c.latitude, lng: c.longitude }));
+  const inside = d <= S.radius;
+  const dev = deviceId();
+  const rec = {
+    emp, type, t: Date.now(),
+    lat: +c.latitude.toFixed(6), lng: +c.longitude.toFixed(6),
+    acc: Math.round(c.accuracy), dist: d, inside,
+    deviceId: dev, device: navigator.userAgent.slice(0, 160)
+  };
+  const reject = async (reason, html) => {
+    try { await DB.punch({ ...rec, type: "rejected_" + type, reason }, false); } catch {}
+    fail(alertBox("err", html));
+  };
+
+  // phone lock: each employee only from their own registered phone, one phone = one employee
+  if (S.deviceLock) {
+    let all;
+    try { all = await DB.allStatus(); } catch { return fail(alertBox("err", "No connection. Try again.")); }
+    const mine = all[emp]?.device;
+    if (mine && mine !== dev)
+      return reject("other_device", `This phone is not registered to <b>${esc(emp)}</b>.<br>Clock in with your own phone. If you changed your phone, ask the admin to reset it.`);
+    if (Object.keys(all).some(e => e !== emp && all[e]?.device === dev))
+      return reject("device_taken", `This phone is registered to another employee.<br>Every employee must clock in with their own phone.`);
+  }
+
+  if (!inside && S.enforce) {
+    const accNote = rec.acc > S.radius ? `<br><small>GPS accuracy is weak (±${rec.acc} m). Step outside or near a window and try again.</small>` : "";
+    return reject("outside", `You are <b>${d} m</b> from the shop (allowed: ${S.radius} m).<br>Not recorded — you must be at the shop.${accNote}`);
+  }
+
+  go.textContent = "Saving…";
+  try { await DB.punch(rec, true); }
+  catch (e) { return fail(alertBox("err", "Could not save. Check your internet connection and try again.")); }
+
+  // success → confirmation, then the page clears itself
+  app.innerHTML = `<div class="wrap"><div class="card center done ${type}">
+    <div class="tick">✓</div>
+    <h2>${type === "in" ? "Clocked in" : "Clocked out"}</h2>
+    <div class="who">${esc(emp)} · ${fmtT(rec.t)}</div>
+    ${!inside ? `<p class="warnline">Recorded outside the shop area — flagged for admin.</p>` : ""}
+    <p class="sub">Sent to the Admin Center. This screen closes automatically.</p>
+  </div></div>`;
+  resetTimer = setTimeout(empView, 4000);
+}
+
+/* ---------------- ADMIN CENTER ---------------- */
+let adminTab = "live", recF = "", recT = "", recE = "", lastRows = [];
+
+async function adminView() {
+  try { S = await DB.getSettings(); } catch {}
+  let ok = false; try { ok = sessionStorage.getItem("tc_admin") === "1"; } catch {}
+  ok ? adminShell() : adminLogin();
+}
+
+function adminLogin() {
+  const first = !S.adminHash;
+  app.innerHTML = `<div class="wrap"><div class="card narrow">
+    <h2 style="margin:0">Admin Center</h2>
+    <p class="sub" style="margin:0">${first ? "First time: create an admin PIN (at least 4 digits)." : "Enter the admin PIN."}</p>
+    <input id="ap" class="pin" type="password" inputmode="numeric" placeholder="Admin PIN">
+    ${first ? `<input id="ap2" class="pin" type="password" inputmode="numeric" placeholder="Repeat PIN">` : ""}
+    <button id="al" class="big in">${first ? "Create & enter" : "Enter"}</button>
+    <div id="msg"></div>
+  </div></div>`;
+  $("#al").onclick = async () => {
+    const v = $("#ap").value.trim(), m = $("#msg");
+    if (first) {
+      if (v.length < 4 || v !== $("#ap2").value.trim()) { m.innerHTML = alertBox("err", "PINs must match and be at least 4 digits."); return; }
+      S.adminHash = await sha("admin:" + v); await DB.saveSettings(S);
+    } else if (await sha("admin:" + v) !== S.adminHash) { m.innerHTML = alertBox("err", "Wrong PIN."); return; }
+    try { sessionStorage.setItem("tc_admin", "1"); } catch {}
+    adminShell();
+  };
+}
+
+function adminShell() {
+  clearInterval(liveTimer);
+  app.innerHTML = `<div class="wrap wide">
+    <header class="top"><div><div class="brand">Admin Center</div><div class="sub">${esc(S.shopName)}${DEMO ? " · DEMO MODE" : ""}</div></div>
+      <div><button class="ghost" id="lo">Log out</button></div></header>
+    ${!S.shop ? alertBox("warn", "Set the shop location in <b>Settings</b> — employees can't clock in until it's set.") + "<br>" : ""}
+    ${(() => { const np = S.employees.filter(e => !S.pins[e]); return np.length ? alertBox("warn", `<b>${np.length} employee(s) have no PIN and can't clock in yet:</b> ${np.map(esc).join(", ")}. Set PINs in <b>Settings → Employee PINs</b>.`) + "<br>" : ""; })()}
+    <nav class="tabs">${[["live", "Live board"], ["rec", "Records & hours"], ["set", "Settings"]].map(([k, l]) => `<button data-t="${k}" class="${adminTab === k ? "act" : ""}">${l}</button>`).join("")}</nav>
+    <div id="pane"><div class="spinner"></div></div></div>`;
+  app.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { adminTab = b.dataset.t; adminShell(); });
+  $("#lo").onclick = () => { try { sessionStorage.removeItem("tc_admin"); } catch {} adminLogin(); };
+  if (adminTab === "live") live(); else if (adminTab === "rec") records(); else settingsPane();
+}
+
+async function live() {
+  const pane = $("#pane"); if (!pane) return;
+  let st, today;
+  try {
+    const t0 = dayStart(Date.now());
+    [st, today] = await Promise.all([DB.allStatus(), DB.punches(t0, nextDay(t0))]);
+  } catch (e) { pane.innerHTML = alertBox("err", "Could not load data: " + esc(e.message)); return; }
+  const hrs = calcHours(today, Date.now());
+  const inCount = S.employees.filter(e => st[e]?.state === "in").length;
+  const flags = today.filter(p => !p.inside || p.type.startsWith("rejected")).length;
+  const shared = sharedPhones(today);
+  const sharedEmps = new Set(Object.values(shared).flat());
+  pane.innerHTML = `${sharedAlert(shared)}
+    <div class="stats"><div><b>${inCount}</b><span>clocked in now</span></div><div><b>${S.employees.length - inCount}</b><span>clocked out</span></div><div><b>${flags}</b><span>location flags today</span></div></div>
+    <div class="board">${S.employees.map(e => {
+      const s = st[e], on = s?.state === "in";
+      return `<div class="ecard ${on ? "on" : ""}">
+        <div class="eid">${esc(e)}</div><div class="est">${on ? "● IN" : "OUT"}</div>
+        <div class="emeta">${s ? (on ? "since " : "last out ") + fmtWhen(s.t) : "no records yet"}</div>
+        <div class="emeta">Today: ${fmtH(hrs[e]?.ms || 0)}${hrs[e]?.open ? " (running)" : ""}</div>
+        ${s && !s.inside ? `<span class="flag">outside shop area</span>` : ""}
+        ${sharedEmps.has(e) ? `<span class="flag red">shared phone today</span>` : ""}
+      </div>`; }).join("")}</div>
+    <p class="sub small">Refreshes every 2 minutes · last update ${fmtT(Date.now())} · <button class="link" id="rf" style="font-size:12px">Refresh now</button></p>`;
+  clearInterval(liveTimer);
+  liveTimer = setInterval(() => { if (adminTab === "live" && $("#pane")) live(); else clearInterval(liveTimer); }, 120000);
+  const rf = $("#rf"); if (rf) rf.onclick = live;
+}
+
+function statusBadge(p) {
+  if (p.type.startsWith("rejected")) {
+    const r = { outside: "outside area", other_device: "wrong phone", device_taken: "another employee's phone" }[p.reason] || "outside area";
+    return `<span class="badge bad">Rejected – ${r}</span>`;
+  }
+  return p.inside ? `<span class="badge ok">At shop</span>` : `<span class="badge warn">Outside</span>`;
+}
+function actionLabel(t) { return t === "in" ? "Clock in" : t === "out" ? "Clock out" : t === "rejected_in" ? "Clock in (blocked)" : "Clock out (blocked)"; }
+
+function records() {
+  const pane = $("#pane"), today = isoDay(Date.now());
+  pane.innerHTML = `<div class="filters">
+      <label>From<input type="date" id="f" value="${recF || today}"></label>
+      <label>To<input type="date" id="tt" value="${recT || today}"></label>
+      <label>Employee<select id="fe"><option value="">All employees</option>${S.employees.map(e => `<option ${recE === e ? "selected" : ""}>${esc(e)}</option>`).join("")}</select></label>
+      <button id="ld" class="btn">Show</button><button id="csv" class="ghost">Export CSV</button>
+    </div><div id="res"></div>`;
+  const load = async () => {
+    recF = $("#f").value; recT = $("#tt").value; recE = $("#fe").value;
+    const from = new Date(recF + "T00:00").getTime(), to = nextDay(new Date(recT + "T00:00").getTime());
+    const res = $("#res"); res.innerHTML = `<div class="spinner"></div>`;
+    let ps;
+    try { ps = await DB.punches(from, to); } catch (e) { res.innerHTML = alertBox("err", esc(e.message)); return; }
+    if (recE) ps = ps.filter(p => p.emp === recE);
+    lastRows = ps;
+    const shared = sharedPhones(ps);
+    const hrs = calcHours(ps, to > Date.now() ? Date.now() : null);
+    const emps = recE ? [recE] : S.employees;
+    res.innerHTML = `${sharedAlert(shared)}<h3>Hours</h3><div class="scroll"><table class="tbl"><thead><tr><th>Employee</th><th>Hours</th><th>Shifts</th><th>Location flags</th></tr></thead><tbody>
+      ${emps.map(e => { const h = hrs[e]; const f = ps.filter(p => p.emp === e && !p.inside).length;
+        return `<tr><td><b>${esc(e)}</b></td><td>${fmtH(h?.ms || 0)}${h?.open ? ` <span class="badge warn">${to > Date.now() ? "still in" : "no clock-out"}</span>` : ""}</td><td>${h?.shifts || 0}</td><td>${f ? `<span class="badge warn">${f}</span>` : "–"}</td></tr>`; }).join("")}
+      </tbody></table></div>
+      <h3>All entries (${ps.length})</h3>
+      ${ps.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Time</th><th>Employee</th><th>Action</th><th>Coordinates</th><th>Distance</th><th>GPS accuracy</th><th>Phone</th><th>Status</th><th>Map</th></tr></thead><tbody>
+      ${ps.slice().reverse().map(p => `<tr><td>${fmtD(p.t)}</td><td>${fmtT(p.t)}</td><td><b>${esc(p.emp)}</b></td><td>${actionLabel(p.type)}</td><td>${p.lat}, ${p.lng}</td><td>${p.dist} m</td><td>±${p.acc} m</td><td>${shortDev(p.deviceId)}${shared[p.deviceId] ? ` <span class="badge bad">shared</span>` : ""}</td><td>${statusBadge(p)}</td><td><a href="${mapUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open</a></td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="sub">No entries in this period.</p>`}`;
+  };
+  $("#ld").onclick = load;
+  $("#csv").onclick = () => {
+    if (!lastRows.length) return;
+    const head = ["Date", "Time", "Employee", "Action", "Status", "Distance_m", "Accuracy_m", "Latitude", "Longitude", "Phone_ID"];
+    const rows = lastRows.map(p => [fmtD(p.t), fmtT(p.t), p.emp, actionLabel(p.type), p.type.startsWith("rejected") ? "Rejected " + (p.reason || "outside") : p.inside ? "At shop" : "Outside", p.dist, p.acc, p.lat, p.lng, p.deviceId || ""]);
+    const csv = [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `timeclock_${recF}_${recT}.csv`; a.click();
+  };
+  load();
+}
+
+function settingsPane() {
+  const pane = $("#pane");
+  pane.innerHTML = `<div class="set">
+    <section><h3>Shop location</h3>
+      <label>Shop name<input id="sn" value="${esc(S.shopName)}"></label>
+      <div class="row"><label>Latitude<input id="la" value="${S.shop ? S.shop.lat : ""}"></label><label>Longitude<input id="lg" value="${S.shop ? S.shop.lng : ""}"></label></div>
+      <div><button id="here" class="btn">📍 Use my current location</button> <span id="hm" class="sub small">Stand inside the shop when you press this.</span></div>
+      ${S.shop ? `<a href="${mapUrl(S.shop.lat, S.shop.lng)}" target="_blank" rel="noopener">Check the saved location on Google Maps</a>` : ""}
+      <label>Allowed radius around the shop (meters)<input id="rad" type="number" min="20" max="2000" value="${S.radius}"></label>
+      <label class="chk"><input type="checkbox" id="enf" ${S.enforce ? "checked" : ""}> Block clock-in/out from outside the radius (if unticked: record it but flag it)</label>
+    </section>
+    <section><h3>Phone lock</h3>
+      <label class="chk"><input type="checkbox" id="dl" ${S.deviceLock ? "checked" : ""}> Each employee can only clock in from their own registered phone (one phone = one employee)</label>
+      <p class="sub small" style="margin:0">A phone is registered automatically at the employee's first clock-in. Press <b>Reset</b> if they change phone, clear their browser data or switch browser.</p>
+      <div id="devs"><div class="spinner"></div></div></section>
+    <section><h3>Employees</h3><p class="sub small" style="margin:0">One employee ID per line.</p>
+      <textarea id="emps" rows="10">${esc(S.employees.join("\n"))}</textarea></section>
+    <section><h3>Employee PINs (required)</h3>
+      <p class="sub small" style="margin:0">Employees log in with their ID + PIN. Without a PIN they cannot clock in. Type a new PIN to set/change it; tick "remove" to delete it.</p>
+      <div>${S.employees.map(e => `<div class="pinrow"><b>${esc(e)}</b><span class="badge ${S.pins[e] ? "ok" : ""}">${S.pins[e] ? "PIN set" : "no PIN"}</span>
+        <input data-p="${esc(e)}" type="password" inputmode="numeric" placeholder="New PIN" autocomplete="new-password">
+        <label class="chk"><input type="checkbox" data-c="${esc(e)}"> remove</label></div>`).join("")}</div></section>
+    <section><h3>Admin PIN</h3><input id="nap" type="password" inputmode="numeric" placeholder="New admin PIN (leave empty to keep current)" autocomplete="new-password"></section>
+    <button id="sv" class="big in">Save settings</button><div id="msg"></div>
+  </div>`;
+
+  const renderDevs = async () => {
+    const box = $("#devs"); if (!box) return;
+    let all = {};
+    try { all = await DB.allStatus(); } catch (e) { box.innerHTML = alertBox("err", "Could not load phones."); return; }
+    box.innerHTML = S.employees.map(e => {
+      const d = all[e]?.device;
+      return `<div class="devrow"><b>${esc(e)}</b><span>${d ? `<span class="badge ok">Phone ${shortDev(d)}</span>` : `<span class="badge">not registered yet</span>`}</span>
+        ${d ? `<button class="ghost" data-r="${esc(e)}">Reset</button>` : "<span></span>"}</div>`;
+    }).join("");
+    box.querySelectorAll("[data-r]").forEach(b => b.onclick = async () => {
+      if (!confirm(`Reset the phone for ${b.dataset.r}? Their next clock-in will register the new phone.`)) return;
+      b.disabled = true;
+      try { await DB.setDevice(b.dataset.r, null); } catch (e) { alert("Could not reset: " + e.message); }
+      renderDevs();
+    });
+  };
+  renderDevs();
+
+  $("#here").onclick = async () => {
+    const hm = $("#hm"); hm.textContent = "Getting location…";
+    try { const c = await getPos(); $("#la").value = c.latitude.toFixed(6); $("#lg").value = c.longitude.toFixed(6);
+      hm.textContent = `Got it (accuracy ±${Math.round(c.accuracy)} m). Press Save.`; }
+    catch (e) { hm.textContent = e.message; }
+  };
+
+  $("#sv").onclick = async () => {
+    const m = $("#msg");
+    const lat = parseFloat($("#la").value), lng = parseFloat($("#lg").value), rad = parseInt($("#rad").value, 10);
+    const emps = [...new Set($("#emps").value.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean))];
+    if (($("#la").value || $("#lg").value) && (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) { m.innerHTML = alertBox("err", "Latitude/longitude are not valid."); return; }
+    if (!(rad >= 20 && rad <= 2000)) { m.innerHTML = alertBox("err", "Radius must be between 20 and 2000 m."); return; }
+    if (!emps.length) { m.innerHTML = alertBox("err", "Add at least one employee."); return; }
+
+    const pins = { ...S.pins };
+    for (const inp of pane.querySelectorAll("[data-p]")) {
+      const e = inp.dataset.p, v = inp.value.trim();
+      if (v) { if (v.length < 4) { m.innerHTML = alertBox("err", `PIN for ${esc(e)} must be at least 4 digits.`); return; } pins[e] = await sha(e + ":" + v); }
+    }
+    pane.querySelectorAll("[data-c]").forEach(c => { if (c.checked) delete pins[c.dataset.c]; });
+
+    const nap = $("#nap").value.trim();
+    if (nap && nap.length < 4) { m.innerHTML = alertBox("err", "Admin PIN must be at least 4 digits."); return; }
+
+    const ns = { ...S, shopName: $("#sn").value.trim() || "Shop", shop: isNaN(lat) ? null : { lat, lng }, radius: rad, enforce: $("#enf").checked, deviceLock: $("#dl").checked, employees: emps, pins };
+    if (nap) ns.adminHash = await sha("admin:" + nap);
+    try { await DB.saveSettings(ns); S = ns; adminShell(); setTimeout(() => { const mm = $("#msg"); if (mm) mm.innerHTML = alertBox("ok", "Settings saved."); }, 50); }
+    catch (e) { m.innerHTML = alertBox("err", "Could not save: " + esc(e.message)); }
+  };
+}
+
+boot();
+</script>
+</body>
+</html>
