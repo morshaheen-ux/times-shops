@@ -87,6 +87,9 @@ footer a{color:var(--mute);font-size:13px}
 .row{display:flex;gap:10px}.row>*{flex:1}
 .pinrow{display:grid;grid-template-columns:90px 80px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .pinrow:last-child{border-bottom:0}
+.devrow{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.devrow:last-child{border-bottom:0}
+.flag.red{color:var(--red);background:var(--red-bg)}
 @media (max-width:520px){.pinrow{grid-template-columns:1fr 1fr}.clock{font-size:22px}}
 </style>
 </head>
@@ -125,7 +128,7 @@ const LS = {
 
 const DB = {
   async getSettings() {
-    const def = { shopName: "Shop", employees: DEFAULT_EMPLOYEES.slice(), shop: null, radius: 100, enforce: true, adminHash: null, pins: {} };
+    const def = { shopName: "Shop", employees: DEFAULT_EMPLOYEES.slice(), shop: null, radius: 100, enforce: true, deviceLock: true, adminHash: null, pins: {} };
     let s = null;
     if (DEMO) s = LS.get("settings", null);
     else { const d = await fs.collection("timeclock_settings").doc("main").get(); s = d.exists ? d.data() : null; }
@@ -150,13 +153,17 @@ const DB = {
   async punch(p, updateStatus) {
     if (DEMO) {
       const a = LS.get("punches", []); a.push({ ...p, id: String(Date.now()) }); LS.set("punches", a);
-      if (updateStatus) { const st = LS.get("status", {}); st[p.emp] = { state: p.type, t: p.t, inside: p.inside }; LS.set("status", st); }
+      if (updateStatus) { const st = LS.get("status", {}); st[p.emp] = { ...(st[p.emp] || {}), state: p.type, t: p.t, inside: p.inside, device: p.deviceId }; LS.set("status", st); }
       return;
     }
     const batch = fs.batch();
     batch.set(fs.collection("timeclock_punches").doc(), { ...p, serverTime: firebase.firestore.FieldValue.serverTimestamp() });
-    if (updateStatus) batch.set(fs.collection("timeclock_status").doc(p.emp), { state: p.type, t: p.t, inside: p.inside });
+    if (updateStatus) batch.set(fs.collection("timeclock_status").doc(p.emp), { state: p.type, t: p.t, inside: p.inside, device: p.deviceId }, { merge: true });
     await batch.commit();
+  },
+  async setDevice(emp, dev) {
+    if (DEMO) { const st = LS.get("status", {}); st[emp] = { ...(st[emp] || {}), device: dev }; LS.set("status", st); return; }
+    await fs.collection("timeclock_status").doc(emp).set({ device: dev }, { merge: true });
   },
   async punches(from, to) {
     if (DEMO) return LS.get("punches", []).filter(p => p.t >= from && p.t < to).sort((a, b) => a.t - b.t);
@@ -184,6 +191,26 @@ async function sha(s) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
+function deviceId() {
+  let id = null;
+  try { id = localStorage.getItem("tc_device"); } catch {}
+  if (!id) {
+    id = "P" + Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-4).toUpperCase();
+    try { localStorage.setItem("tc_device", id); } catch {}
+  }
+  return id;
+}
+const shortDev = d => d ? "…" + String(d).slice(-4) : "–";
+// phones used by more than one employee: { deviceId: [emp, emp] }
+function sharedPhones(ps) {
+  const m = {};
+  ps.forEach(p => { if (p.deviceId) (m[p.deviceId] = m[p.deviceId] || new Set()).add(p.emp); });
+  const out = {};
+  for (const k in m) if (m[k].size > 1) out[k] = [...m[k]];
+  return out;
+}
+const sharedAlert = sh => Object.keys(sh).length ? alertBox("err", "<b>⚠ Same phone used for different employees:</b><br>" +
+  Object.entries(sh).map(([d, es]) => `Phone ${shortDev(d)} → ${es.map(esc).join(", ")}`).join("<br>")) + "<br>" : "";
 function getPos() {
   return new Promise((res, rej) => {
     if (!navigator.geolocation) return rej(new Error("This device does not support GPS location."));
@@ -236,7 +263,7 @@ function empView() {
     ${demoBanner()}
     ${!S.shop ? alertBox("warn", "The shop location is not set yet. The admin must set it in the Admin Center before anyone can clock in.") + "<br>" : ""}
     <div class="grid">${S.employees.map(e => `<button class="idbtn" data-e="${esc(e)}">${esc(e)}</button>`).join("")}</div>
-    <footer><a href="#admin">Admin Center</a></footer></div>`;
+    <footer><span class="sub small">This phone: ${shortDev(deviceId())}</span> · <a href="#admin">Admin Center</a></footer></div>`;
   app.querySelectorAll(".idbtn").forEach(b => b.onclick = () => empStep(b.dataset.e));
 }
 
@@ -277,17 +304,32 @@ async function doPunch(emp, type, needPin) {
 
   const d = Math.round(distM(S.shop, { lat: c.latitude, lng: c.longitude }));
   const inside = d <= S.radius;
+  const dev = deviceId();
   const rec = {
     emp, type, t: Date.now(),
     lat: +c.latitude.toFixed(6), lng: +c.longitude.toFixed(6),
     acc: Math.round(c.accuracy), dist: d, inside,
-    device: navigator.userAgent.slice(0, 160)
+    deviceId: dev, device: navigator.userAgent.slice(0, 160)
+  };
+  const reject = async (reason, html) => {
+    try { await DB.punch({ ...rec, type: "rejected_" + type, reason }, false); } catch {}
+    fail(alertBox("err", html));
   };
 
+  // phone lock: each employee only from their own registered phone, one phone = one employee
+  if (S.deviceLock) {
+    let all;
+    try { all = await DB.allStatus(); } catch { return fail(alertBox("err", "No connection. Try again.")); }
+    const mine = all[emp]?.device;
+    if (mine && mine !== dev)
+      return reject("other_device", `This phone is not registered to <b>${esc(emp)}</b>.<br>Clock in with your own phone. If you changed your phone, ask the admin to reset it.`);
+    if (Object.keys(all).some(e => e !== emp && all[e]?.device === dev))
+      return reject("device_taken", `This phone is registered to another employee.<br>Every employee must clock in with their own phone.`);
+  }
+
   if (!inside && S.enforce) {
-    try { await DB.punch({ ...rec, type: "rejected_" + type }, false); } catch {}
     const accNote = rec.acc > S.radius ? `<br><small>GPS accuracy is weak (±${rec.acc} m). Step outside or near a window and try again.</small>` : "";
-    return fail(alertBox("err", `You are <b>${d} m</b> from the shop (allowed: ${S.radius} m).<br>Not recorded — you must be at the shop.${accNote}`));
+    return reject("outside", `You are <b>${d} m</b> from the shop (allowed: ${S.radius} m).<br>Not recorded — you must be at the shop.${accNote}`);
   }
 
   go.textContent = "Saving…";
@@ -358,8 +400,10 @@ async function live() {
   } catch (e) { pane.innerHTML = alertBox("err", "Could not load data: " + esc(e.message)); return; }
   const hrs = calcHours(today, Date.now());
   const inCount = S.employees.filter(e => st[e]?.state === "in").length;
-  const flags = today.filter(p => !p.inside).length;
-  pane.innerHTML = `
+  const flags = today.filter(p => !p.inside || p.type.startsWith("rejected")).length;
+  const shared = sharedPhones(today);
+  const sharedEmps = new Set(Object.values(shared).flat());
+  pane.innerHTML = `${sharedAlert(shared)}
     <div class="stats"><div><b>${inCount}</b><span>clocked in now</span></div><div><b>${S.employees.length - inCount}</b><span>clocked out</span></div><div><b>${flags}</b><span>location flags today</span></div></div>
     <div class="board">${S.employees.map(e => {
       const s = st[e], on = s?.state === "in";
@@ -368,6 +412,7 @@ async function live() {
         <div class="emeta">${s ? (on ? "since " : "last out ") + fmtWhen(s.t) : "no records yet"}</div>
         <div class="emeta">Today: ${fmtH(hrs[e]?.ms || 0)}${hrs[e]?.open ? " (running)" : ""}</div>
         ${s && !s.inside ? `<span class="flag">outside shop area</span>` : ""}
+        ${sharedEmps.has(e) ? `<span class="flag red">shared phone today</span>` : ""}
       </div>`; }).join("")}</div>
     <p class="sub small">Refreshes every 2 minutes · last update ${fmtT(Date.now())} · <button class="link" id="rf" style="font-size:12px">Refresh now</button></p>`;
   clearInterval(liveTimer);
@@ -376,7 +421,10 @@ async function live() {
 }
 
 function statusBadge(p) {
-  if (p.type.startsWith("rejected")) return `<span class="badge bad">Rejected</span>`;
+  if (p.type.startsWith("rejected")) {
+    const r = { outside: "outside area", other_device: "wrong phone", device_taken: "another employee's phone" }[p.reason] || "outside area";
+    return `<span class="badge bad">Rejected – ${r}</span>`;
+  }
   return p.inside ? `<span class="badge ok">At shop</span>` : `<span class="badge warn">Outside</span>`;
 }
 function actionLabel(t) { return t === "in" ? "Clock in" : t === "out" ? "Clock out" : t === "rejected_in" ? "Clock in (blocked)" : "Clock out (blocked)"; }
@@ -397,22 +445,23 @@ function records() {
     try { ps = await DB.punches(from, to); } catch (e) { res.innerHTML = alertBox("err", esc(e.message)); return; }
     if (recE) ps = ps.filter(p => p.emp === recE);
     lastRows = ps;
+    const shared = sharedPhones(ps);
     const hrs = calcHours(ps, to > Date.now() ? Date.now() : null);
     const emps = recE ? [recE] : S.employees;
-    res.innerHTML = `<h3>Hours</h3><div class="scroll"><table class="tbl"><thead><tr><th>Employee</th><th>Hours</th><th>Shifts</th><th>Location flags</th></tr></thead><tbody>
+    res.innerHTML = `${sharedAlert(shared)}<h3>Hours</h3><div class="scroll"><table class="tbl"><thead><tr><th>Employee</th><th>Hours</th><th>Shifts</th><th>Location flags</th></tr></thead><tbody>
       ${emps.map(e => { const h = hrs[e]; const f = ps.filter(p => p.emp === e && !p.inside).length;
         return `<tr><td><b>${esc(e)}</b></td><td>${fmtH(h?.ms || 0)}${h?.open ? ` <span class="badge warn">${to > Date.now() ? "still in" : "no clock-out"}</span>` : ""}</td><td>${h?.shifts || 0}</td><td>${f ? `<span class="badge warn">${f}</span>` : "–"}</td></tr>`; }).join("")}
       </tbody></table></div>
       <h3>All entries (${ps.length})</h3>
-      ${ps.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Time</th><th>Employee</th><th>Action</th><th>Coordinates</th><th>Distance</th><th>GPS accuracy</th><th>Status</th><th>Map</th></tr></thead><tbody>
-      ${ps.slice().reverse().map(p => `<tr><td>${fmtD(p.t)}</td><td>${fmtT(p.t)}</td><td><b>${esc(p.emp)}</b></td><td>${actionLabel(p.type)}</td><td>${p.lat}, ${p.lng}</td><td>${p.dist} m</td><td>±${p.acc} m</td><td>${statusBadge(p)}</td><td><a href="${mapUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open</a></td></tr>`).join("")}
+      ${ps.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Time</th><th>Employee</th><th>Action</th><th>Coordinates</th><th>Distance</th><th>GPS accuracy</th><th>Phone</th><th>Status</th><th>Map</th></tr></thead><tbody>
+      ${ps.slice().reverse().map(p => `<tr><td>${fmtD(p.t)}</td><td>${fmtT(p.t)}</td><td><b>${esc(p.emp)}</b></td><td>${actionLabel(p.type)}</td><td>${p.lat}, ${p.lng}</td><td>${p.dist} m</td><td>±${p.acc} m</td><td>${shortDev(p.deviceId)}${shared[p.deviceId] ? ` <span class="badge bad">shared</span>` : ""}</td><td>${statusBadge(p)}</td><td><a href="${mapUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open</a></td></tr>`).join("")}
       </tbody></table></div>` : `<p class="sub">No entries in this period.</p>`}`;
   };
   $("#ld").onclick = load;
   $("#csv").onclick = () => {
     if (!lastRows.length) return;
-    const head = ["Date", "Time", "Employee", "Action", "Status", "Distance_m", "Accuracy_m", "Latitude", "Longitude"];
-    const rows = lastRows.map(p => [fmtD(p.t), fmtT(p.t), p.emp, actionLabel(p.type), p.type.startsWith("rejected") ? "Rejected" : p.inside ? "At shop" : "Outside", p.dist, p.acc, p.lat, p.lng]);
+    const head = ["Date", "Time", "Employee", "Action", "Status", "Distance_m", "Accuracy_m", "Latitude", "Longitude", "Phone_ID"];
+    const rows = lastRows.map(p => [fmtD(p.t), fmtT(p.t), p.emp, actionLabel(p.type), p.type.startsWith("rejected") ? "Rejected " + (p.reason || "outside") : p.inside ? "At shop" : "Outside", p.dist, p.acc, p.lat, p.lng, p.deviceId || ""]);
     const csv = [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
@@ -432,6 +481,10 @@ function settingsPane() {
       <label>Allowed radius around the shop (meters)<input id="rad" type="number" min="20" max="2000" value="${S.radius}"></label>
       <label class="chk"><input type="checkbox" id="enf" ${S.enforce ? "checked" : ""}> Block clock-in/out from outside the radius (if unticked: record it but flag it)</label>
     </section>
+    <section><h3>Phone lock</h3>
+      <label class="chk"><input type="checkbox" id="dl" ${S.deviceLock ? "checked" : ""}> Each employee can only clock in from their own registered phone (one phone = one employee)</label>
+      <p class="sub small" style="margin:0">A phone is registered automatically at the employee's first clock-in. Press <b>Reset</b> if they change phone, clear their browser data or switch browser.</p>
+      <div id="devs"><div class="spinner"></div></div></section>
     <section><h3>Employees</h3><p class="sub small" style="margin:0">One employee ID per line.</p>
       <textarea id="emps" rows="10">${esc(S.employees.join("\n"))}</textarea></section>
     <section><h3>Employee PINs (optional)</h3>
@@ -442,6 +495,24 @@ function settingsPane() {
     <section><h3>Admin PIN</h3><input id="nap" type="password" inputmode="numeric" placeholder="New admin PIN (leave empty to keep current)" autocomplete="new-password"></section>
     <button id="sv" class="big in">Save settings</button><div id="msg"></div>
   </div>`;
+
+  const renderDevs = async () => {
+    const box = $("#devs"); if (!box) return;
+    let all = {};
+    try { all = await DB.allStatus(); } catch (e) { box.innerHTML = alertBox("err", "Could not load phones."); return; }
+    box.innerHTML = S.employees.map(e => {
+      const d = all[e]?.device;
+      return `<div class="devrow"><b>${esc(e)}</b><span>${d ? `<span class="badge ok">Phone ${shortDev(d)}</span>` : `<span class="badge">not registered yet</span>`}</span>
+        ${d ? `<button class="ghost" data-r="${esc(e)}">Reset</button>` : "<span></span>"}</div>`;
+    }).join("");
+    box.querySelectorAll("[data-r]").forEach(b => b.onclick = async () => {
+      if (!confirm(`Reset the phone for ${b.dataset.r}? Their next clock-in will register the new phone.`)) return;
+      b.disabled = true;
+      try { await DB.setDevice(b.dataset.r, null); } catch (e) { alert("Could not reset: " + e.message); }
+      renderDevs();
+    });
+  };
+  renderDevs();
 
   $("#here").onclick = async () => {
     const hm = $("#hm"); hm.textContent = "Getting location…";
@@ -468,7 +539,7 @@ function settingsPane() {
     const nap = $("#nap").value.trim();
     if (nap && nap.length < 4) { m.innerHTML = alertBox("err", "Admin PIN must be at least 4 digits."); return; }
 
-    const ns = { ...S, shopName: $("#sn").value.trim() || "Shop", shop: isNaN(lat) ? null : { lat, lng }, radius: rad, enforce: $("#enf").checked, employees: emps, pins };
+    const ns = { ...S, shopName: $("#sn").value.trim() || "Shop", shop: isNaN(lat) ? null : { lat, lng }, radius: rad, enforce: $("#enf").checked, deviceLock: $("#dl").checked, employees: emps, pins };
     if (nap) ns.adminHash = await sha("admin:" + nap);
     try { await DB.saveSettings(ns); S = ns; adminShell(); setTimeout(() => { const mm = $("#msg"); if (mm) mm.innerHTML = alertBox("ok", "Settings saved."); }, 50); }
     catch (e) { m.innerHTML = alertBox("err", "Could not save: " + esc(e.message)); }
