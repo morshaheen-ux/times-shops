@@ -103,12 +103,12 @@ footer a{color:var(--mute);font-size:13px}
    (data stays on this one device only).
    ========================================================= */
 const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyArumq8TusHJNDwsG5TTFASHq2tOYcrwg8",
+  authDomain: "dsp-hours.firebaseapp.com",
+  projectId: "dsp-hours",
+  storageBucket: "dsp-hours.firebasestorage.app",
+  messagingSenderId: "990664937035",
+  appId: "1:990664937035:web:d29dd9d5e960ded9eb87ce"
 };
 
 const DEFAULT_EMPLOYEES = ["LUAB01","ALMO03","AHRA06","ABRE07","ALAH08","ALMU10","MOMO13","KHIB15","ALBA18","ABQA23"];
@@ -369,9 +369,10 @@ async function live() {
         <div class="emeta">Today: ${fmtH(hrs[e]?.ms || 0)}${hrs[e]?.open ? " (running)" : ""}</div>
         ${s && !s.inside ? `<span class="flag">outside shop area</span>` : ""}
       </div>`; }).join("")}</div>
-    <p class="sub small">Refreshes every 30 seconds · last update ${fmtT(Date.now())}</p>`;
+    <p class="sub small">Refreshes every 2 minutes · last update ${fmtT(Date.now())} · <button class="link" id="rf" style="font-size:12px">Refresh now</button></p>`;
   clearInterval(liveTimer);
-  liveTimer = setInterval(() => { if (adminTab === "live" && location.hash === "#admin" && $("#pane")) live(); else clearInterval(liveTimer); }, 30000);
+  liveTimer = setInterval(() => { if (adminTab === "live" && location.hash === "#admin" && $("#pane")) live(); else clearInterval(liveTimer); }, 120000);
+  const rf = $("#rf"); if (rf) rf.onclick = live;
 }
 
 function statusBadge(p) {
@@ -403,8 +404,8 @@ function records() {
         return `<tr><td><b>${esc(e)}</b></td><td>${fmtH(h?.ms || 0)}${h?.open ? ` <span class="badge warn">${to > Date.now() ? "still in" : "no clock-out"}</span>` : ""}</td><td>${h?.shifts || 0}</td><td>${f ? `<span class="badge warn">${f}</span>` : "–"}</td></tr>`; }).join("")}
       </tbody></table></div>
       <h3>All entries (${ps.length})</h3>
-      ${ps.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Time</th><th>Employee</th><th>Action</th><th>Distance</th><th>GPS accuracy</th><th>Status</th><th>Map</th></tr></thead><tbody>
-      ${ps.slice().reverse().map(p => `<tr><td>${fmtD(p.t)}</td><td>${fmtT(p.t)}</td><td><b>${esc(p.emp)}</b></td><td>${actionLabel(p.type)}</td><td>${p.dist} m</td><td>±${p.acc} m</td><td>${statusBadge(p)}</td><td><a href="${mapUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open</a></td></tr>`).join("")}
+      ${ps.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Time</th><th>Employee</th><th>Action</th><th>Coordinates</th><th>Distance</th><th>GPS accuracy</th><th>Status</th><th>Map</th></tr></thead><tbody>
+      ${ps.slice().reverse().map(p => `<tr><td>${fmtD(p.t)}</td><td>${fmtT(p.t)}</td><td><b>${esc(p.emp)}</b></td><td>${actionLabel(p.type)}</td><td>${p.lat}, ${p.lng}</td><td>${p.dist} m</td><td>±${p.acc} m</td><td>${statusBadge(p)}</td><td><a href="${mapUrl(p.lat, p.lng)}" target="_blank" rel="noopener">Open</a></td></tr>`).join("")}
       </tbody></table></div>` : `<p class="sub">No entries in this period.</p>`}`;
   };
   $("#ld").onclick = load;
