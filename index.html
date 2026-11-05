@@ -91,7 +91,7 @@
 
     <div id="admContent" style="display:none">
       <div class="sec">
-        <h4>Shops & geofences</h4>
+        <h4>Shops, geofences &amp; employees</h4>
         <div class="small" style="margin-bottom:10px">Stand inside a shop and press its "Set to my GPS" button to define its location. Radius in meters.</div>
         <div id="shopCards"></div>
         <div class="msg" id="admMsg"></div>
@@ -132,17 +132,20 @@
 const ADMIN_PIN = "1234"; // <-- change this
 const SHOP_NAMES = ["Wien", "Spandau", "Sonnenallee", "Bremen"];
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT"
+  apiKey: "AIzaSyArumq8TusHJNDwsG5TTFASHq2tOYcrwg8",
+  authDomain: "dsp-hours.firebaseapp.com",
+  databaseURL: "https://dsp-hours-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "dsp-hours",
+  storageBucket: "dsp-hours.firebasestorage.app",
+  messagingSenderId: "990664937035",
+  appId: "1:990664937035:web:d29dd9d5e960ded9eb87ce"
 };
 /* ========================================== */
 
-const EMPLOYEES = ["LUAB01","ALMO03","AHRA06","ABRE07","ALAH08","ALMU10","MOMO13","KHIB15","ALBA18","ABQA23"];
+// Employee codes are managed per shop in the Admin Center (stored under employees/{shop}/{code})
 const LKEY = "tc_local_v2";
 let db = null, cloud = false;
-let punches = [], shops = {}, radius = 150;
+let punches = [], shops = {}, emps = {}, radius = 150;
 let selShop = null, selected = null, filter = "today", busy = false, admOK = false, teamShop = "All";
 
 try {
@@ -150,18 +153,38 @@ try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     cloud = true;
-    syncBadge.textContent = "Cloud sync ON";
-    db.ref('shops').on('value', s => { shops = s.val() || {}; renderAll(); });
-    db.ref('punches').on('value', s => { punches = Object.values(s.val() || {}); renderAll(); });
+    syncBadge.textContent = "Connecting…";
+    const onErr = e => { syncBadge.textContent = "Cloud error: " + e.code; syncBadge.style.color = "#c0392b"; console.error(e); };
+    db.ref('.info/connected').on('value', s => {
+      syncBadge.textContent = s.val() ? "Cloud sync ON" : "Offline – will sync when back online";
+      syncBadge.style.color = s.val() ? "#1e7e34" : "#9a7b0a";
+    });
+    db.ref('shops').on('value', s => { shops = s.val() || {}; renderAll(); }, onErr);
+    db.ref('employees').on('value', s => { emps = s.val() || {}; renderAll(); }, onErr);
+    db.ref('punches').orderByChild('ts').on('value', s => {
+      const arr = []; s.forEach(c => { arr.push(c.val()); }); punches = arr; renderAll();
+    }, onErr);
   }
-} catch(e) { console.warn("Firebase failed, local mode", e); }
+} catch(e) { console.warn("Firebase failed, local mode", e); syncBadge.textContent = "Cloud init failed – local mode"; }
+
+// One-time upload of punches saved on this device before cloud was enabled
+if (cloud) {
+  const old = JSON.parse(localStorage.getItem(LKEY) || "{}");
+  if ((old.punches||[]).length || Object.keys(old.shops||{}).length || Object.keys(old.emps||{}).length) {
+    Promise.all([
+      ...(old.punches||[]).map(p => db.ref('punches').push(p)),
+      ...Object.entries(old.shops||{}).map(([n,s]) => db.ref('shops/'+n).transaction(cur => cur || s)),
+      ...Object.entries(old.emps||{}).map(([n,o]) => db.ref('employees/'+n).update(o))
+    ]).then(() => localStorage.removeItem(LKEY)).catch(e => console.warn("Migration failed", e));
+  }
+}
 
 if (!cloud) {
   syncBadge.textContent = "Local mode (no cloud config)";
   const d = JSON.parse(localStorage.getItem(LKEY) || "{}");
-  punches = d.punches || []; shops = d.shops || {};
+  punches = d.punches || []; shops = d.shops || {}; emps = d.emps || {};
 }
-function persistLocal(){ if(!cloud) localStorage.setItem(LKEY, JSON.stringify({punches, shops})); }
+function persistLocal(){ if(!cloud) localStorage.setItem(LKEY, JSON.stringify({punches, shops, emps})); }
 
 function showTab(t){
   viewEmp.style.display = t==='emp'?'block':'none';
@@ -180,8 +203,12 @@ function renderAll(){ renderEmpGrid(); if(admOK) renderAdmin(); }
 function renderEmpGrid(){
   shopGrid.innerHTML = SHOP_NAMES.map(s =>
     `<button class="shop ${s===selShop?'sel':''}" onclick="pickShop('${s}')">${s}</button>`).join('');
-  empGrid.innerHTML = EMPLOYEES.map(e =>
-    `<button class="emp ${e===selected?'sel':''}" onclick="pick('${e}')">${e}</button>`).join('');
+  const list = selShop ? shopEmps(selShop) : [];
+  if (selected && !list.includes(selected)) selected = null;
+  empGrid.innerHTML = !selShop ? `<span class="small">Choose a shop first.</span>`
+    : list.length ? list.map(e =>
+      `<button class="emp ${e===selected?'sel':''}" onclick="pick('${e}')">${e}</button>`).join('')
+    : `<span class="small">No employee codes for ${selShop} yet — ask admin.</span>`;
   const ready = selShop && selected;
   btnIn.disabled = !ready || busy;
   btnOut.disabled = !ready || busy;
@@ -238,7 +265,10 @@ async function punch(type){
     busy=false; renderEmpGrid(); empMsg.className="msg err";
     empMsg.textContent = `Already clocked ${type}. Use the other button.`; return; }
   const rec = {emp:selected, shop:selShop, type, ts:Date.now(), lat:+pos.lat.toFixed(6), lng:+pos.lng.toFixed(6), acc:pos.acc, dist:d};
-  if(cloud) db.ref('punches').push(rec);
+  if(cloud){
+    try { await db.ref('punches').push(rec); }
+    catch(e){ busy=false; renderEmpGrid(); empMsg.className="msg err"; empMsg.textContent = "Save failed: " + (e.code||e.message); return; }
+  }
   else { punches.push(rec); persistLocal(); }
   busy = false; renderEmpGrid(); showOverlay(rec);
 }
@@ -251,7 +281,38 @@ function showOverlay(rec){
   setTimeout(() => { overlay.style.display='none'; pick(rec.emp); }, 3000);
 }
 
+function shopEmps(s){ return Object.keys(emps[s] || {}).sort(); }
+function allEmps(){
+  const set = new Set();
+  SHOP_NAMES.forEach(s => shopEmps(s).forEach(e => set.add(e)));
+  punches.forEach(p => set.add(p.emp));
+  return [...set].sort();
+}
+
 /* ---------- ADMIN ---------- */
+async function addEmp(shop){
+  const inp = document.getElementById('new_'+shop);
+  const codes = inp.value.toUpperCase().split(/[\s,;]+/).filter(Boolean);
+  if(!codes.length) return;
+  const bad = codes.filter(c => !/^[A-Z0-9_-]{2,20}$/.test(c));
+  if(bad.length){ admMsg.className="msg err"; admMsg.textContent = `Invalid code: ${bad.join(', ')} (use letters, numbers, - or _, 2–20 chars)`; return; }
+  const upd = {}; codes.forEach(c => upd[c] = true);
+  try {
+    if(cloud) await db.ref('employees/'+shop).update(upd);
+    else { emps[shop] = Object.assign(emps[shop]||{}, upd); persistLocal(); }
+    admMsg.className="msg ok"; admMsg.textContent = `Added ${codes.join(', ')} to ${shop}.`;
+    renderAll();
+  } catch(e){ admMsg.className="msg err"; admMsg.textContent = "Save failed: " + (e.code||e.message); }
+}
+async function removeEmp(shop, code){
+  if(!confirm(`Remove ${code} from ${shop}? Past punches are kept.`)) return;
+  try {
+    if(cloud) await db.ref('employees/'+shop+'/'+code).remove();
+    else { if(emps[shop]) delete emps[shop][code]; persistLocal(); }
+    admMsg.className="msg ok"; admMsg.textContent = `Removed ${code} from ${shop}.`;
+    renderAll();
+  } catch(e){ admMsg.className="msg err"; admMsg.textContent = "Remove failed: " + (e.code||e.message); }
+}
 async function setShopGPS(name){
   admMsg.className="msg"; admMsg.textContent = `Getting GPS for ${name}…`;
   try {
@@ -295,6 +356,13 @@ function renderAdmin(){
           <span class="small">m</span>
           <button class="mini primary" onclick="setShopGPS('${n}')">Set to my GPS</button>
         </div>
+      </div>
+      <div class="small" style="margin:12px 0 6px">Employee codes (${shopEmps(n).length})</div>
+      <div class="row" style="margin-bottom:8px">${shopEmps(n).map(c =>
+        `<span class="chip shop">${c} <a href="#" style="color:#c0392b;text-decoration:none;margin-left:4px" title="Remove" onclick="removeEmp('${n}','${c}');return false">✕</a></span>`).join('') || '<span class="small" style="color:#999">None yet</span>'}</div>
+      <div class="row">
+        <input class="pin" style="width:220px" id="new_${n}" placeholder="New code(s), e.g. LUAB01, ALMO03" onkeydown="if(event.key==='Enter')addEmp('${n}')">
+        <button class="mini" onclick="addEmp('${n}')">Add</button>
       </div></div>`;
   }).join('');
 
@@ -304,7 +372,7 @@ function renderAdmin(){
 
   const tk = dayKey(Date.now());
   teamTable.innerHTML = `<tr><th>Employee</th><th>Shop</th><th>Status</th><th>Last punch</th><th>Worked today</th><th>GPS check</th></tr>` +
-    EMPLOYEES.map(e=>{
+    (teamShop==="All" ? allEmps() : shopEmps(teamShop)).map(e=>{
       const ps = punches.filter(p=>p.emp===e && dayKey(p.ts)===tk && (teamShop==="All"||p.shop===teamShop));
       const last = ps.pop();
       const sh = last ? shops[last.shop] : null;
