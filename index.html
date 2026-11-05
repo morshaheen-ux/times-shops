@@ -92,7 +92,7 @@
     <div id="admContent" style="display:none">
       <div class="sec">
         <h4>Shops, geofences &amp; employees</h4>
-        <div class="small" style="margin-bottom:10px">Stand inside a shop and press its "Set to my GPS" button to define its location. Radius in meters.</div>
+        <div class="small" style="margin-bottom:10px">Set each shop's location by pasting coordinates (in Google Maps, right-click the shop and click the numbers to copy them), or stand inside the shop and press "Set to my GPS". Radius in meters.</div>
         <div id="shopCards"></div>
         <div class="msg" id="admMsg"></div>
       </div>
@@ -326,6 +326,21 @@ async function setShopGPS(name){
     renderAll();
   } catch(e){ admMsg.className="msg err"; admMsg.textContent = e; }
 }
+async function setShopCoords(name){
+  const raw = document.getElementById('coord_'+name).value.trim();
+  const m = raw.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/);
+  const lat = m ? parseFloat(m[1]) : NaN, lng = m ? parseFloat(m[2]) : NaN;
+  if(!m || Math.abs(lat) > 90 || Math.abs(lng) > 180){
+    admMsg.className="msg err"; admMsg.textContent = `Invalid coordinates for ${name}. Use "latitude, longitude", e.g. 52.520008, 13.404954`; return; }
+  const rad = Math.max(10, parseInt(document.getElementById('rad_'+name).value) || 150);
+  const s = {lat:+lat.toFixed(6), lng:+lng.toFixed(6), radius:rad};
+  try {
+    if(cloud) await db.ref('shops/'+name).set(s);
+    shops[name] = s; persistLocal();
+    admMsg.className="msg ok"; admMsg.textContent = `${name} location saved.`;
+    renderAll();
+  } catch(e){ admMsg.className="msg err"; admMsg.textContent = "Save failed: " + (e.code||e.message); }
+}
 async function setRadius(name, v){
   v = Math.max(10, parseInt(v)||150);
   const s = shops[name]; if(!s) return;
@@ -350,12 +365,16 @@ function renderAdmin(){
     const s = shops[n];
     return `<div class="shopcard">
       <div class="row" style="justify-content:space-between">
-        <div><b>${n}</b><br><span class="small">${s ? `Lat ${s.lat.toFixed(5)}, Lng ${s.lng.toFixed(5)}` : "Location not set"}</span></div>
+        <div><b>${n}</b><br><span class="small">${s ? `Lat ${s.lat.toFixed(6)}, Lng ${s.lng.toFixed(6)} · <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank">view on map</a>` : "Location not set"}</span></div>
         <div class="row">
           <input class="num" id="rad_${n}" type="number" min="10" step="10" value="${s?s.radius||150:150}" onchange="setRadius('${n}', this.value)">
           <span class="small">m</span>
           <button class="mini primary" onclick="setShopGPS('${n}')">Set to my GPS</button>
         </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <input class="pin" style="width:240px" id="coord_${n}" placeholder="lat, lng  e.g. 52.520008, 13.404954" value="${s ? s.lat+', '+s.lng : ''}" onkeydown="if(event.key==='Enter')setShopCoords('${n}')">
+        <button class="mini" onclick="setShopCoords('${n}')">Save coordinates</button>
       </div>
       <div class="small" style="margin:12px 0 6px">Employee codes (${shopEmps(n).length})</div>
       <div class="row" style="margin-bottom:8px">${shopEmps(n).map(c =>
