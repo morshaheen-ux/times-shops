@@ -76,6 +76,7 @@
       <button class="btn out" id="btnOut" onclick="punch('out')" disabled>Time Out</button>
     </div>
     <div class="msg" id="empMsg">Select your shop and employee code to enable the clock.</div>
+    <div class="small" style="color:#aaa;margin-top:18px" id="devFooter"></div>
   </div>
 
   <!-- ADMIN VIEW -->
@@ -95,6 +96,24 @@
         <div class="small" style="margin-bottom:10px">Set each shop's location by pasting coordinates (in Google Maps, right-click the shop and click the numbers to copy them), or stand inside the shop and press "Set to my GPS". Radius in meters.</div>
         <div id="shopCards"></div>
         <div class="msg" id="admMsg"></div>
+      </div>
+
+      <div class="sec">
+        <h4>Admin PIN</h4>
+        <div class="row">
+          <input class="pin" type="password" id="pinCur" placeholder="Current PIN">
+          <input class="pin" type="password" id="pinNew" placeholder="New PIN">
+          <input class="pin" type="password" id="pinNew2" placeholder="Repeat new PIN">
+          <button class="mini primary" onclick="changePin()">Change PIN</button>
+        </div>
+        <div class="msg" id="pinChgMsg"></div>
+      </div>
+
+      <div class="sec">
+        <h4>Registered devices</h4>
+        <div class="small" style="margin-bottom:10px">Each employee code is locked to the phone that made its first punch. Reset to let the employee register a new phone (their next punch registers it).</div>
+        <div class="scroll"><table id="devTable"></table></div>
+        <div class="msg" id="devMsg"></div>
       </div>
 
       <div class="sec">
@@ -129,7 +148,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
 /* ================= CONFIG ================= */
-const ADMIN_PIN = "1234"; // <-- change this
+const ADMIN_PIN = "1234"; // default PIN, only used until you set a new one in Admin Center → Admin PIN
 const SHOP_NAMES = ["Wien", "Spandau", "Sonnenallee", "Bremen"];
 const firebaseConfig = {
   apiKey: "AIzaSyArumq8TusHJNDwsG5TTFASHq2tOYcrwg8",
@@ -145,7 +164,26 @@ const firebaseConfig = {
 // Employee codes are managed per shop in the Admin Center (stored under employees/{shop}/{code})
 const LKEY = "tc_local_v2";
 let db = null, cloud = false;
-let punches = [], shops = {}, emps = {}, radius = 150;
+let punches = [], shops = {}, emps = {}, devices = {}, pinHash = null, radius = 150;
+// Unique ID for this phone/browser, kept in localStorage
+const DEVICE_ID = (() => {
+  let id = localStorage.getItem('tc_device_id');
+  if(!id){
+    id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/-/g,'').slice(0,16);
+    localStorage.setItem('tc_device_id', id);
+  }
+  return id;
+})();
+function deviceName(){
+  const u = navigator.userAgent;
+  const os = /iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac/.test(u)?'Mac':'Device';
+  const br = /SamsungBrowser/.test(u)?'Samsung':/Edg\//.test(u)?'Edge':/CriOS|Chrome/.test(u)?'Chrome':/FxiOS|Firefox/.test(u)?'Firefox':/Safari/.test(u)?'Safari':'';
+  return (os+' '+br).trim();
+}
+async function sha256(t){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tc-salt:'+t));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
 let selShop = null, selected = null, filter = "today", busy = false, admOK = false, teamShop = "All";
 
 try {
@@ -161,6 +199,8 @@ try {
     });
     db.ref('shops').on('value', s => { shops = s.val() || {}; renderAll(); }, onErr);
     db.ref('employees').on('value', s => { emps = s.val() || {}; renderAll(); }, onErr);
+    db.ref('devices').on('value', s => { devices = s.val() || {}; renderAll(); }, onErr);
+    db.ref('config/pinHash').on('value', s => { pinHash = s.val(); }, onErr);
     db.ref('punches').orderByChild('ts').on('value', s => {
       const arr = []; s.forEach(c => { arr.push(c.val()); }); punches = arr; renderAll();
     }, onErr);
@@ -182,9 +222,9 @@ if (cloud) {
 if (!cloud) {
   syncBadge.textContent = "Local mode (no cloud config)";
   const d = JSON.parse(localStorage.getItem(LKEY) || "{}");
-  punches = d.punches || []; shops = d.shops || {}; emps = d.emps || {};
+  punches = d.punches || []; shops = d.shops || {}; emps = d.emps || {}; devices = d.devices || {}; pinHash = d.pinHash || null;
 }
-function persistLocal(){ if(!cloud) localStorage.setItem(LKEY, JSON.stringify({punches, shops, emps})); }
+function persistLocal(){ if(!cloud) localStorage.setItem(LKEY, JSON.stringify({punches, shops, emps, devices, pinHash})); }
 
 function showTab(t){
   viewEmp.style.display = t==='emp'?'block':'none';
@@ -193,14 +233,16 @@ function showTab(t){
   tabAdm.classList.toggle('active', t==='adm');
   if(t==='adm' && admOK) renderAdmin();
 }
-function checkPin(){
-  if(pinInput.value === ADMIN_PIN){ admOK = true; pinGate.style.display='none'; admContent.style.display='block'; renderAdmin(); }
+async function pinMatches(v){ return pinHash ? (await sha256(v)) === pinHash : v === ADMIN_PIN; }
+async function checkPin(){
+  if(await pinMatches(pinInput.value)){ pinInput.value=''; admOK = true; pinGate.style.display='none'; admContent.style.display='block'; renderAdmin(); }
   else { pinMsg.className = "msg err"; pinMsg.textContent = "Wrong PIN."; }
 }
 
 function renderAll(){ renderEmpGrid(); if(admOK) renderAdmin(); }
 
 function renderEmpGrid(){
+  devFooter.textContent = `This device ID: ${DEVICE_ID.slice(0,6)}`;
   shopGrid.innerHTML = SHOP_NAMES.map(s =>
     `<button class="shop ${s===selShop?'sel':''}" onclick="pickShop('${s}')">${s}</button>`).join('');
   const list = selShop ? shopEmps(selShop) : [];
@@ -228,7 +270,14 @@ function pick(e){
   selected = e;
   const last = punches.filter(p=>p.emp===e && p.shop===selShop).pop();
   empMsg.className = "msg";
-  empMsg.textContent = last ? `${e} @ ${selShop} — last: ${last.type==='in'?'Time In':'Time Out'} at ${fmtT(last.ts)}` : `${e} @ ${selShop} selected.`;
+  const dv = devices[e];
+  if(dv && dv.id !== DEVICE_ID){
+    empMsg.className = "msg err";
+    empMsg.textContent = `${e} is registered to another device (${dv.name||'unknown'}). Only that device can clock in/out — ask admin to reset.`;
+  } else {
+    empMsg.textContent = (last ? `${e} @ ${selShop} — last: ${last.type==='in'?'Time In':'Time Out'} at ${fmtT(last.ts)}` : `${e} @ ${selShop} selected.`)
+      + (dv ? '' : ' · Your first punch will register this device to your code.');
+  }
   renderEmpGrid();
 }
 
@@ -251,6 +300,9 @@ async function punch(type){
   if(!selShop || !selected || busy) return;
   const sh = shops[selShop];
   if(!sh){ empMsg.className="msg err"; empMsg.textContent = "Shop location not set — ask admin."; return; }
+  const dv0 = devices[selected];
+  if(dv0 && dv0.id !== DEVICE_ID){
+    empMsg.className="msg err"; empMsg.textContent = `${selected} is registered to another device (${dv0.name||'unknown'}). Ask admin to reset the device.`; return; }
   busy = true; renderEmpGrid();
   empMsg.className = "msg"; empMsg.textContent = "Getting GPS fix…";
   let pos; try { pos = await getGPS(); } catch(e){
@@ -264,7 +316,18 @@ async function punch(type){
   if(last && last.type === type){
     busy=false; renderEmpGrid(); empMsg.className="msg err";
     empMsg.textContent = `Already clocked ${type}. Use the other button.`; return; }
-  const rec = {emp:selected, shop:selShop, type, ts:Date.now(), lat:+pos.lat.toFixed(6), lng:+pos.lng.toFixed(6), acc:pos.acc, dist:d};
+  // Register this device to the employee on first punch (or confirm it is the registered one)
+  const devRec = {id:DEVICE_ID, name:deviceName(), ts:Date.now()};
+  if(cloud){
+    try {
+      const res = await db.ref('devices/'+selected).transaction(cur => cur === null ? devRec : undefined);
+      const owner = res.snapshot.val();
+      if(!owner || owner.id !== DEVICE_ID){
+        busy=false; renderEmpGrid(); empMsg.className="msg err";
+        empMsg.textContent = `${selected} is registered to another device${owner&&owner.name?' ('+owner.name+')':''}. Ask admin to reset the device.`; return; }
+    } catch(e){ busy=false; renderEmpGrid(); empMsg.className="msg err"; empMsg.textContent = "Device check failed: " + (e.code||e.message); return; }
+  } else if(!devices[selected]) { devices[selected] = devRec; }
+  const rec = {emp:selected, shop:selShop, type, ts:Date.now(), lat:+pos.lat.toFixed(6), lng:+pos.lng.toFixed(6), acc:pos.acc, dist:d, device:DEVICE_ID};
   if(cloud){
     try { await db.ref('punches').push(rec); }
     catch(e){ busy=false; renderEmpGrid(); empMsg.className="msg err"; empMsg.textContent = "Save failed: " + (e.code||e.message); return; }
@@ -290,6 +353,28 @@ function allEmps(){
 }
 
 /* ---------- ADMIN ---------- */
+async function changePin(){
+  const m = pinChgMsg;
+  if(!(await pinMatches(pinCur.value))){ m.className="msg err"; m.textContent="Current PIN is wrong."; return; }
+  if(!/^\S{4,20}$/.test(pinNew.value)){ m.className="msg err"; m.textContent="New PIN must be 4–20 characters, no spaces."; return; }
+  if(pinNew.value !== pinNew2.value){ m.className="msg err"; m.textContent="New PINs don't match."; return; }
+  try {
+    const h = await sha256(pinNew.value);
+    if(cloud) await db.ref('config/pinHash').set(h);
+    pinHash = h; persistLocal();
+    pinCur.value = pinNew.value = pinNew2.value = '';
+    m.className="msg ok"; m.textContent="PIN changed. Use the new PIN from now on, on every device.";
+  } catch(e){ m.className="msg err"; m.textContent = "Save failed: " + (e.code||e.message); }
+}
+async function resetDevice(emp){
+  if(!confirm(`Reset device for ${emp}? Their next punch will register a new phone.`)) return;
+  try {
+    if(cloud) await db.ref('devices/'+emp).remove();
+    else { delete devices[emp]; persistLocal(); }
+    devMsg.className="msg ok"; devMsg.textContent = `${emp} device reset.`;
+    renderAll();
+  } catch(e){ devMsg.className="msg err"; devMsg.textContent = "Reset failed: " + (e.code||e.message); }
+}
 async function addEmp(shop){
   const inp = document.getElementById('new_'+shop);
   const codes = inp.value.toUpperCase().split(/[\s,;]+/).filter(Boolean);
@@ -389,6 +474,12 @@ function renderAdmin(){
     ["All",...SHOP_NAMES].map(s =>
       `<button class="mini ${s===teamShop?'primary':''}" onclick="teamShop='${s}';renderAdmin()">${s}</button>`).join('');
 
+  devTable.innerHTML = `<tr><th>Employee</th><th>Device</th><th>Device ID</th><th>Registered</th><th></th></tr>` +
+    allEmps().map(e => {
+      const dv = devices[e];
+      return `<tr><td><b>${e}</b></td><td>${dv ? (dv.name||'unknown') : '<span class="chip no">Not registered</span>'}</td><td>${dv ? dv.id.slice(0,6) : '—'}${dv && dv.id===DEVICE_ID ? ' <span class="chip in">this device</span>' : ''}</td><td>${dv ? new Date(dv.ts).toLocaleDateString([],{day:'numeric',month:'short'})+' '+fmtT(dv.ts) : '—'}</td><td>${dv ? `<button class="mini" onclick="resetDevice('${e}')">Reset device</button>` : ''}</td></tr>`;
+    }).join('') || `<tr><td colspan="5" style="color:#999">No employees yet.</td></tr>`;
+
   const tk = dayKey(Date.now());
   teamTable.innerHTML = `<tr><th>Employee</th><th>Shop</th><th>Status</th><th>Last punch</th><th>Worked today</th><th>GPS check</th></tr>` +
     (teamShop==="All" ? allEmps() : shopEmps(teamShop)).map(e=>{
@@ -412,8 +503,8 @@ function renderAdmin(){
 function setFilter(f){ filter=f; renderAdmin(); }
 
 function exportCSV(){
-  const head = "date,shop,employee,type,time,lat,lng,accuracy_m,distance_from_shop_m\n";
-  const body = punches.map(p=>[new Date(p.ts).toISOString().slice(0,10),p.shop,p.emp,p.type,new Date(p.ts).toTimeString().slice(0,8),p.lat,p.lng,p.acc,p.dist].join(",")).join("\n");
+  const head = "date,shop,employee,type,time,lat,lng,accuracy_m,distance_from_shop_m,device_id\n";
+  const body = punches.map(p=>[new Date(p.ts).toISOString().slice(0,10),p.shop,p.emp,p.type,new Date(p.ts).toTimeString().slice(0,8),p.lat,p.lng,p.acc,p.dist,(p.device||'').slice(0,6)].join(",")).join("\n");
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([head+body],{type:'text/csv'}));
   a.download = "timeclock_punches.csv"; a.click();
